@@ -11,8 +11,8 @@ Split a text file into parts with a specified size.
 ### Input filename
 
 The input file to be split.  
-_Example:_ An input file with the name _input.nt_ will be split into files with the names _input\_0000000001.nt_,
-_input\_0000000002.nt_,   _input\_0000000003.nt_, etc.  
+_Example:_ An input file with the name _input.nt_ will be split into files with the names _input\_000000001.nt_,
+_input\_000000002.nt_,   _input\_000000003.nt_, etc.  
 ⚠️ Existing files will be overwritten!
 
 ### Chunk size

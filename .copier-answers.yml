@@ -7,5 +7,5 @@ github_page: ''
 project_description: Split a file into parts with a specified size
 project_slug: splitfile
 project_type: plugin
-pypi: false
+pypi: true
 

@@ -32,5 +32,5 @@ If enabled, the "Internal projects directory" parameter has to be set.
 
 ### Internal projects directory
 
-The path to the internal projects directory. If "Use API to fetch and store files" is enabled,
+The path to the internal projects directory. If "Use internal projects directory" is disabled,
 this parameter has no effect.

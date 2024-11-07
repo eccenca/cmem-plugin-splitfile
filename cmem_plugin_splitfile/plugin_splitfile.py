@@ -92,8 +92,8 @@ simplefilter("ignore", category=InsecureRequestWarning)
             param_type=StringParameterType(),
             name="projects_path",
             label="Internal projects directory",
-            description="""The path to the internal projects directory. This parameter has no
-            effect if "Use API to fetch and store files" is enabled.""",
+            description="""The path to the internal projects directory. If "Use internal projects
+            directory" is disabled, this parameter has no effect.""",
             default_value="/data/datalake",
             advanced=True,
         ),

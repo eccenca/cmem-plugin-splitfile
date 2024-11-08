@@ -30,7 +30,7 @@ from pathvalidate import is_valid_filepath
 from urllib3.exceptions import InsecureRequestWarning
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
-from cmem_plugin_splitfile.parameter_types import ResourceParameterType
+from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 
 simplefilter("ignore", category=InsecureRequestWarning)
 
@@ -131,7 +131,7 @@ class SplitFilePlugin(WorkflowPlugin):
             if int(chunk_size) != chunk_size or chunk_size < 1:
                 errors += "Invalid chunk size. "
         elif chunk_size < 1024:  # noqa: PLR2004
-            errors += "Minimum chunk size is 1024 Bytes. "
+            errors += "Minimum chunk size is 1024 bytes. "
 
         if use_directory:
             test_path = projects_path[1:] if projects_path.startswith("/") else projects_path

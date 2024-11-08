@@ -21,7 +21,7 @@ The maximum size of the chunk files.
 
 ### Size unit
 
-The unit of the size value: kilobyte (KB), megabyte (MB) or gigabyte (GB).
+The unit of the size value: kilobyte (KB), megabyte (MB), gigabyte (GB), or number of lines (Lines).
 
 ### Include header
 

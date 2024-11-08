@@ -173,7 +173,8 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""
-        self.log.info(f"File {Path(file_path).name} generated, size: {file_size}")
+        unit = "lines" if self.lines else "bytes"
+        self.log.info(f"File {Path(file_path).name} generated ({file_size} {unit})")
         self.split_filenames.append(file_path)
 
     def get_file(self, file_path: Path) -> None:
@@ -217,15 +218,13 @@ class SplitFilePlugin(WorkflowPlugin):
         """Execute plugin using file system"""
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         self.split_file(resources_path / self.input_filename)
-        input_file_path = Path(self.input_filename).parent
-        if str(input_file_path) != ".":
-            result_path = resources_path / input_file_path
-            result_path.mkdir(exist_ok=True)
-        else:
-            result_path = resources_path
+        input_file_parent = Path(self.input_filename).parent
+        if str(input_file_parent) != ".":
+            resources_path /= input_file_parent
+            resources_path.mkdir(exist_ok=True)
 
         for filename in self.split_filenames:
-            move(Path(filename), result_path / Path(filename).name)
+            move(Path(filename), resources_path / Path(filename).name)
 
         if self.delete_file:
             (resources_path / self.input_filename).unlink()

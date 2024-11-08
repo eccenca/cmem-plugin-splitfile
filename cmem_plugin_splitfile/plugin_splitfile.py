@@ -233,7 +233,7 @@ class SplitFilePlugin(WorkflowPlugin):
     def execute(self, inputs: None, context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
         self.context = context
-        context.report.update(ExecutionReport(entity_count=0, operation_desc="file generated"))
+        context.report.update(ExecutionReport(entity_count=0, operation_desc="files generated"))
 
         with TemporaryDirectory() as self.temp:
             self.execute_filesystem() if self.use_directory else self.execute_api()

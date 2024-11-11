@@ -230,7 +230,7 @@ def test_api_size_delete() -> None:
         if type(exc) is HTTPError and exc.response.status_code == 404:  # noqa: PLR2004
             pass
         else:
-            raise exc  # noqa: TRY201
+            raise
 
 
 @needs_cmem

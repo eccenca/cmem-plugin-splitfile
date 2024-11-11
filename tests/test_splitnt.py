@@ -28,7 +28,7 @@ def setup(request: pytest.FixtureRequest) -> None:
     make_new_project(PROJECT_ID)
 
     (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
-    copy(Path(__path__[0]) / "test.nt", Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt")
+    copy(Path(__path__[0]) / "test_files" / "test.nt", Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt")
 
     with (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").open("rb") as f:
         buf = BytesIO(f.read())
@@ -63,7 +63,7 @@ def test_filesystem_size() -> None:
                 Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -93,7 +93,7 @@ def test_filesystem_size_header() -> None:
                 Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt",
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -106,7 +106,7 @@ def test_filesystem_size_header() -> None:
 @pytest.mark.usefixtures("setup")
 def test_api_size() -> None:
     """Test split by size using API"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -124,7 +124,7 @@ def test_api_size() -> None:
                 .read()
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -136,7 +136,7 @@ def test_api_size() -> None:
 @pytest.mark.usefixtures("setup")
 def test_api_size_header() -> None:
     """Test split by size with header using API"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -155,7 +155,7 @@ def test_api_size_header() -> None:
                 .read()
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -167,7 +167,7 @@ def test_api_size_header() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -184,7 +184,7 @@ def test_filesystem_size_delete() -> None:
                 Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -197,7 +197,7 @@ def test_filesystem_size_delete() -> None:
 @pytest.mark.usefixtures("setup")
 def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -216,7 +216,7 @@ def test_api_size_delete() -> None:
                 .read()
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -235,7 +235,7 @@ def test_api_size_delete() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines() -> None:
     """Test split by lines using file system"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=40,
@@ -251,7 +251,7 @@ def test_filesystem_lines() -> None:
                 Path(__path__[0]) / "test_files" / f"test_lines_00000000{n+1}.nt",
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:
@@ -262,7 +262,7 @@ def test_filesystem_lines() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines_header() -> None:
     """Test split by lines with header using file system"""
-    error = None
+    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=40,
@@ -279,7 +279,7 @@ def test_filesystem_lines_header() -> None:
                 Path(__path__[0]) / "test_files" / f"test_lines_header_00000000{n+1}.nt",
             )
         except AssertionError:
-            error = "compare"
+            error = True
             break
 
     if error:

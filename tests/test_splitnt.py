@@ -119,7 +119,7 @@ def test_api_size() -> None:
 
     for n in range(3):
         try:
-            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
             assert (
                 f
                 == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")
@@ -150,7 +150,7 @@ def test_api_size_header() -> None:
 
     for n in range(3):
         try:
-            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
             assert (
                 f
                 == (Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt")
@@ -211,7 +211,7 @@ def test_api_size_delete() -> None:
 
     for n in range(3):
         try:
-            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
             assert (
                 f
                 == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")

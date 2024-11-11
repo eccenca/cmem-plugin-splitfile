@@ -129,7 +129,6 @@ def test_api_size() -> None:
 
     if error:
         raise AssertionError("Error comparing files")
-
     get_resource(project_name=PROJECT_ID, resource_name="test.nt")
 
 
@@ -161,7 +160,6 @@ def test_api_size_header() -> None:
 
     if error:
         raise AssertionError("Error comparing files")
-
     get_resource(project_name=PROJECT_ID, resource_name="test.nt")
 
 

@@ -28,7 +28,10 @@ def setup(request: pytest.FixtureRequest) -> None:
     make_new_project(PROJECT_ID)
 
     (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
-    copy(Path(__path__[0]) / "test_files" / "test.nt", Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt")
+    copy(
+        Path(__path__[0]) / "test_files" / "test.nt",
+        Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt",
+    )
 
     with (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").open("rb") as f:
         buf = BytesIO(f.read())

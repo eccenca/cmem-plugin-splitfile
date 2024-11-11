@@ -1,6 +1,7 @@
 """Plugin tests."""
 
 from contextlib import suppress
+from filecmp import cmp
 from io import BytesIO
 from pathlib import Path
 from shutil import copy, rmtree
@@ -20,7 +21,7 @@ PROJECT_ID = f"project_{UID}"
 
 
 @pytest.fixture
-def _setup(request: pytest.FixtureRequest) -> None:
+def setup(request: pytest.FixtureRequest) -> None:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
@@ -43,76 +44,245 @@ def _setup(request: pytest.FixtureRequest) -> None:
 
 
 @needs_cmem
-def tests_api(_setup: None) -> None:
-    """Tests using API without deleting inut file"""
+@pytest.mark.usefixtures("setup")
+def test_filesystem_size() -> None:
+    """Test split by size using file system"""
+    error = None
     SplitFilePlugin(
         input_filename="test.nt",
-        chunk_size=600,
+        chunk_size=6,
         size_unit="KB",
-        use_directory=False,
+        projects_path=__path__[0],
+        use_directory=True,
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        try:
+            assert cmp(
+                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+                Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+        raise OSError("Input file deleted.")
+
+
+@needs_cmem
+@pytest.mark.usefixtures("setup")
+def test_filesystem_size_header() -> None:
+    """Test split by size with header using file system"""
+    error = None
+    SplitFilePlugin(
+        input_filename="test.nt",
+        chunk_size=6,
+        size_unit="KB",
+        include_header=True,
+        projects_path=__path__[0],
+        use_directory=True,
+    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        try:
+            assert cmp(
+                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+                Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt",
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+        raise OSError("Input file deleted.")
+
+
+@needs_cmem
+@pytest.mark.usefixtures("setup")
+def test_api_size() -> None:
+    """Test split by size using API"""
+    error = None
+    SplitFilePlugin(
+        input_filename="test.nt",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        try:
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            assert (
+                f
+                == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")
+                .open("rb")
+                .read()
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
 
     get_resource(project_name=PROJECT_ID, resource_name="test.nt")
 
 
 @needs_cmem
-def tests_api_delete(_setup: None) -> None:
-    """Tests using API with deleting inut file"""
+@pytest.mark.usefixtures("setup")
+def test_api_size_header() -> None:
+    """Test split by size with header using API"""
+    error = None
     SplitFilePlugin(
         input_filename="test.nt",
-        chunk_size=600,
+        chunk_size=6,
         size_unit="KB",
-        delete_file=True,
-        use_directory=False,
+        include_header=True,
+        projects_path=__path__[0],
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        try:
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            assert (
+                f
+                == (Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt")
+                .open("rb")
+                .read()
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
+
+    get_resource(project_name=PROJECT_ID, resource_name="test.nt")
+
+
+@needs_cmem
+@pytest.mark.usefixtures("setup")
+def test_filesystem_size_delete() -> None:
+    """Test split by size using file system and delete input file"""
+    error = None
+    SplitFilePlugin(
+        input_filename="test.nt",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        delete_file=True,
+    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        try:
+            assert cmp(
+                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+                Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
+    if (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+        raise OSError("Input file not deleted.")
+
+
+@needs_cmem
+@pytest.mark.usefixtures("setup")
+def test_api_size_delete() -> None:
+    """Test split by size using API and delete input file"""
+    error = None
+    SplitFilePlugin(
+        input_filename="test.nt",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        delete_file=True,
+    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        try:
+            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n + 1}.nt")
+            assert (
+                f
+                == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")
+                .open("rb")
+                .read()
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
 
     try:
         get_resource(project_name=PROJECT_ID, resource_name="test.nt")
-        raise OSError("Input file not deleted")  # noqa: TRY301
-    except Exception as e:
-        if type(e) is HTTPError and e.response.status_code == 404:  # noqa: PLR2004
+    except Exception as exc:
+        if type(exc) is HTTPError and exc.response.status_code == 404:  # noqa: PLR2004
             pass
         else:
-            raise e  # noqa: TRY201
+            raise exc  # noqa: TRY201
 
 
 @needs_cmem
-def tests_filesystem(_setup: None) -> None:
-    """Tests using API without deleting inut file"""
+@pytest.mark.usefixtures("setup")
+def test_filesystem_lines() -> None:
+    """Test split by lines using file system"""
+    error = None
     SplitFilePlugin(
         input_filename="test.nt",
-        chunk_size=600,
-        size_unit="KB",
+        chunk_size=40,
+        size_unit="Lines",
         projects_path=__path__[0],
         use_directory=True,
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt").is_file():
-            raise OSError(f"Output file {n+1} not found.")
+        try:
+            assert cmp(
+                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+                Path(__path__[0]) / "test_files" / f"test_lines_00000000{n+1}.nt",
+            )
+        except AssertionError:
+            error = "compare"
+            break
+
+    if error:
+        raise AssertionError("Error comparing files")
 
 
 @needs_cmem
-def tests_filesystem_delete(_setup: None) -> None:
-    """Tests using API without deleting inut file"""
+@pytest.mark.usefixtures("setup")
+def test_filesystem_lines_header() -> None:
+    """Test split by lines with header using file system"""
+    error = None
     SplitFilePlugin(
         input_filename="test.nt",
-        chunk_size=600,
-        size_unit="KB",
-        delete_file=True,
+        chunk_size=40,
+        size_unit="Lines",
+        include_header=True,
         projects_path=__path__[0],
         use_directory=True,
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt").is_file():
-            raise OSError(f"Output file {n+1} not found.")
+        try:
+            assert cmp(
+                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+                Path(__path__[0]) / "test_files" / f"test_lines_header_00000000{n+1}.nt",
+            )
+        except AssertionError:
+            error = "compare"
+            break
 
-    if (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
-        raise OSError("Input file not deleted.")
+    if error:
+        raise AssertionError("Error comparing files")

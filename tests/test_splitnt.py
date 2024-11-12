@@ -50,7 +50,6 @@ def setup(request: pytest.FixtureRequest) -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size() -> None:
     """Test split by size using file system"""
-    error = None
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -73,7 +72,6 @@ def test_filesystem_size() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size_header() -> None:
     """Test split by size with header using file system"""
-    error = None
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,

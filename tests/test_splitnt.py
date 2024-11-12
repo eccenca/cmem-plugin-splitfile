@@ -18,6 +18,7 @@ from . import __path__
 
 UID = "fc26980a17144b20ad8138d2493f0c2b"
 PROJECT_ID = f"project_{UID}"
+TEST_FILENAME = f"{UID}.nt"
 
 
 @pytest.fixture
@@ -29,15 +30,15 @@ def setup(request: pytest.FixtureRequest) -> None:
 
     (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
     copy(
-        Path(__path__[0]) / "test_files" / "test.nt",
-        Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt",
+        Path(__path__[0]) / "test_files" / TEST_FILENAME,
+        Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME,
     )
 
-    with (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").open("rb") as f:
+    with (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).open("rb") as f:
         buf = BytesIO(f.read())
         create_resource(
             project_name=PROJECT_ID,
-            resource_name="test.nt",
+            resource_name=TEST_FILENAME,
             file_resource=buf,
             replace=True,
         )
@@ -51,7 +52,7 @@ def setup(request: pytest.FixtureRequest) -> None:
 def test_filesystem_size() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
@@ -60,11 +61,11 @@ def test_filesystem_size() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt",
         )
 
-    if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
         raise OSError("Input file deleted.")
 
 
@@ -73,7 +74,7 @@ def test_filesystem_size() -> None:
 def test_filesystem_size_header() -> None:
     """Test split by size with header using file system"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=6,
         size_unit="KB",
         include_header=True,
@@ -83,11 +84,11 @@ def test_filesystem_size_header() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UID}_size_header_00000000{n+1}.nt",
         )
 
-    if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
         raise OSError("Input file deleted.")
 
 
@@ -96,20 +97,20 @@ def test_filesystem_size_header() -> None:
 def test_api_size() -> None:
     """Test split by size using API"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UID}_00000000{n+1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt").open("rb").read()
+            == (Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt").open("rb").read()
         )
 
-    get_resource(project_name=PROJECT_ID, resource_name="test.nt")
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
 @needs_cmem
@@ -117,7 +118,7 @@ def test_api_size() -> None:
 def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
@@ -127,11 +128,11 @@ def test_filesystem_size_delete() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt",
         )
 
-    if (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
+    if (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
         raise OSError("Input file not deleted.")
 
 
@@ -140,7 +141,7 @@ def test_filesystem_size_delete() -> None:
 def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
@@ -148,14 +149,14 @@ def test_api_size_delete() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UID}_00000000{n+1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt").open("rb").read()
+            == (Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt").open("rb").read()
         )
 
     try:
-        get_resource(project_name=PROJECT_ID, resource_name="test.nt")
+        get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
     except Exception as exc:
         if type(exc) is HTTPError and exc.response.status_code == 404:  # noqa: PLR2004
             pass
@@ -168,7 +169,7 @@ def test_api_size_delete() -> None:
 def test_filesystem_lines() -> None:
     """Test split by lines using file system"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=40,
         size_unit="Lines",
         projects_path=__path__[0],
@@ -177,8 +178,8 @@ def test_filesystem_lines() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"test_lines_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UID}_lines_00000000{n+1}.nt",
         )
 
 
@@ -187,7 +188,7 @@ def test_filesystem_lines() -> None:
 def test_filesystem_lines_header() -> None:
     """Test split by lines with header using file system"""
     SplitFilePlugin(
-        input_filename="test.nt",
+        input_filename=TEST_FILENAME,
         chunk_size=40,
         size_unit="Lines",
         include_header=True,
@@ -197,6 +198,6 @@ def test_filesystem_lines_header() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"test_lines_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UID}_lines_header_00000000{n+1}.nt",
         )

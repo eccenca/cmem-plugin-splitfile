@@ -97,7 +97,6 @@ def test_filesystem_size_header() -> None:
 @pytest.mark.usefixtures("setup")
 def test_api_size() -> None:
     """Test split by size using API"""
-    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -119,7 +118,6 @@ def test_api_size() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
-    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -143,7 +141,6 @@ def test_filesystem_size_delete() -> None:
 @pytest.mark.usefixtures("setup")
 def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
-    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=6,
@@ -172,7 +169,6 @@ def test_api_size_delete() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines() -> None:
     """Test split by lines using file system"""
-    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=40,
@@ -192,7 +188,6 @@ def test_filesystem_lines() -> None:
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines_header() -> None:
     """Test split by lines with header using file system"""
-    error = False
     SplitFilePlugin(
         input_filename="test.nt",
         chunk_size=40,

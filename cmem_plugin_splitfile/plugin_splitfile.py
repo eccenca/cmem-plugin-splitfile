@@ -173,8 +173,7 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""
-        unit = "lines" if self.lines else "bytes"
-        self.log.info(f"File {Path(file_path).name} generated ({file_size} {unit})")
+        self.log.info(f"File {Path(file_path).name} generated ({file_size} bytes)")
         self.split_filenames.append(file_path)
 
     def get_file(self, file_path: Path) -> None:

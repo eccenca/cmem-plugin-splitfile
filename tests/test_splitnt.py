@@ -60,17 +60,11 @@ def test_filesystem_size() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            assert cmp(
-                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-                Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
-            )
-        except AssertionError:
-            error = True
-            break
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+        )
 
-    if error:
-        raise AssertionError("Error comparing files")
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
         raise OSError("Input file deleted.")
 
@@ -90,17 +84,11 @@ def test_filesystem_size_header() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            assert cmp(
-                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-                Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt",
-            )
-        except AssertionError:
-            error = True
-            break
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"test_size_header_00000000{n+1}.nt",
+        )
 
-    if error:
-        raise AssertionError("Error comparing files")
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
         raise OSError("Input file deleted.")
 
@@ -118,20 +106,12 @@ def test_api_size() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
-            assert (
-                f
-                == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")
-                .open("rb")
-                .read()
-            )
-        except AssertionError:
-            error = True
-            break
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        assert (
+            f
+            == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt").open("rb").read()
+        )
 
-    if error:
-        raise AssertionError("Error comparing files")
     get_resource(project_name=PROJECT_ID, resource_name="test.nt")
 
 
@@ -150,17 +130,11 @@ def test_filesystem_size_delete() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            assert cmp(
-                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-                Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
-            )
-        except AssertionError:
-            error = True
-            break
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt",
+        )
 
-    if error:
-        raise AssertionError("Error comparing files")
     if (Path(__path__[0]) / PROJECT_ID / "resources" / "test.nt").is_file():
         raise OSError("Input file not deleted.")
 
@@ -179,20 +153,11 @@ def test_api_size_delete() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
-            assert (
-                f
-                == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt")
-                .open("rb")
-                .read()
-            )
-        except AssertionError:
-            error = True
-            break
-
-    if error:
-        raise AssertionError("Error comparing files")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"test_00000000{n+1}.nt")
+        assert (
+            f
+            == (Path(__path__[0]) / "test_files" / f"test_size_00000000{n+1}.nt").open("rb").read()
+        )
 
     try:
         get_resource(project_name=PROJECT_ID, resource_name="test.nt")
@@ -217,17 +182,10 @@ def test_filesystem_lines() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            assert cmp(
-                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-                Path(__path__[0]) / "test_files" / f"test_lines_00000000{n+1}.nt",
-            )
-        except AssertionError:
-            error = True
-            break
-
-    if error:
-        raise AssertionError("Error comparing files")
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"test_lines_00000000{n+1}.nt",
+        )
 
 
 @needs_cmem
@@ -245,14 +203,7 @@ def test_filesystem_lines_header() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        try:
-            assert cmp(
-                Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
-                Path(__path__[0]) / "test_files" / f"test_lines_header_00000000{n+1}.nt",
-            )
-        except AssertionError:
-            error = True
-            break
-
-    if error:
-        raise AssertionError("Error comparing files")
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"test_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"test_lines_header_00000000{n+1}.nt",
+        )

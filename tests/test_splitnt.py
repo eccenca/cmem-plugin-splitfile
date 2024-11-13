@@ -16,9 +16,9 @@ from tests.utils import TestExecutionContext, needs_cmem
 
 from . import __path__
 
-UID = "fc26980a17144b20ad8138d2493f0c2b"
-PROJECT_ID = f"project_{UID}"
-TEST_FILENAME = f"{UID}.nt"
+UUID4 = "fc26980a17144b20ad8138d2493f0c2b"
+PROJECT_ID = f"project_{UUID4}"
+TEST_FILENAME = f"{UUID4}.nt"
 
 
 @pytest.fixture
@@ -61,8 +61,8 @@ def test_filesystem_size() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt",
         )
 
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -84,8 +84,8 @@ def test_filesystem_size_header() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UID}_size_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_header_00000000{n+1}.nt",
         )
 
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -104,10 +104,12 @@ def test_api_size() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UID}_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n+1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt").open("rb").read()
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt")
+            .open("rb")
+            .read()
         )
 
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
@@ -128,8 +130,8 @@ def test_filesystem_size_delete() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt",
         )
 
     if (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -149,10 +151,12 @@ def test_api_size_delete() -> None:
     ).execute(None, context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UID}_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n+1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"{UID}_size_00000000{n+1}.nt").open("rb").read()
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt")
+            .open("rb")
+            .read()
         )
 
     try:
@@ -178,8 +182,8 @@ def test_filesystem_lines() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UID}_lines_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_00000000{n+1}.nt",
         )
 
 
@@ -198,6 +202,6 @@ def test_filesystem_lines_header() -> None:
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UID}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UID}_lines_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_header_00000000{n+1}.nt",
         )

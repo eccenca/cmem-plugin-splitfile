@@ -5,43 +5,6 @@ Split a text file into parts with a specified size.
 [![eccenca Corporate Memory][cmem-shield]][cmem-link]  
 [![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
 
-
-## Options
-
-### Input filename
-
-The input file to be split.  
-_Example:_ An input file with the name _input.nt_ will be split into files with the names _input\_000000001.nt_,
-_input\_000000002.nt_,   _input\_000000003.nt_, etc.  
-⚠️ Existing files will be overwritten!
-
-### Chunk size
-
-The maximum size of the chunk files.
-
-### Size unit
-
-The unit of the size value: kilobyte (KB), megabyte (MB), gigabyte (GB), or number of lines (Lines).
-
-### Include header
-
-Include the header in each split. The first line of the input file is treated as the header.
-
-### Delete input file
-
-Delete the input file after splitting.
-
-### Use internal projects directory
-
-Use the internal projects directory of DataIntegration to fetch and store files, instead of using the API.
-If enabled, the "Internal projects directory" parameter has to be set.
-
-### Internal projects directory
-
-The path to the internal projects directory. If "Use internal projects directory" is disabled,
-this parameter has no effect.
-
-
 ## Development
 
 - Run [task](https://taskfile.dev/) to see all major development tasks.

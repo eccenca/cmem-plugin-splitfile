@@ -100,7 +100,7 @@ simplefilter("ignore", category=InsecureRequestWarning)
     ],
 )
 class SplitFilePlugin(WorkflowPlugin):
-    """Example Workflow Plugin: Random Values"""
+    """Split File Workflow Plugin"""
 
     def __init__(  # noqa: C901 PLR0913
         self,
@@ -151,7 +151,18 @@ class SplitFilePlugin(WorkflowPlugin):
         self.use_directory = use_directory
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
+        self.moved_files = 0
         self.split_filenames: list[str] = []
+
+    def cancel_workflow(self) -> bool:
+        """Cancel workflow"""
+        try:
+            if self.context.workflow.status() != "Running":
+                self.log.info("End task (Cancelled Workflow).")
+                return True
+        except AttributeError:
+            pass
+        return False
 
     def split_file(self, input_file_path: Path) -> None:
         """Split file"""
@@ -192,13 +203,15 @@ class SplitFilePlugin(WorkflowPlugin):
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)
 
-    def execute_api(self) -> None:
+    def execute_api(self) -> bool:
         """Execute plugin using the API"""
         file_path = Path(self.temp) / Path(self.input_filename).name
         self.get_file(file_path)
         self.split_file(file_path)
 
         for filename in self.split_filenames:
+            if self.cancel_workflow():
+                return False
             with Path(filename).open("rb") as f:
                 buf = BytesIO(f.read())
                 setup_cmempy_user_access(self.context.user)
@@ -208,12 +221,14 @@ class SplitFilePlugin(WorkflowPlugin):
                     file_resource=buf,
                     replace=True,
                 )
+                self.moved_files += 1
 
         if self.delete_file:
             setup_cmempy_user_access(self.context.user)
             delete_resource(self.context.task.project_id(), self.input_filename)
+        return True
 
-    def execute_filesystem(self) -> None:
+    def execute_filesystem(self) -> bool:
         """Execute plugin using file system"""
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         self.split_file(resources_path / self.input_filename)
@@ -223,21 +238,32 @@ class SplitFilePlugin(WorkflowPlugin):
             resources_path.mkdir(exist_ok=True)
 
         for filename in self.split_filenames:
+            if self.cancel_workflow():
+                return False
             move(Path(filename), resources_path / Path(filename).name)
+            self.moved_files += 1
 
         if self.delete_file:
             (resources_path / self.input_filename).unlink()
+        return True
 
     def execute(self, inputs: None, context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
         self.context = context
         context.report.update(ExecutionReport(entity_count=0, operation_desc="files generated"))
 
-        with TemporaryDirectory() as self.temp:
-            self.execute_filesystem() if self.use_directory else self.execute_api()
+        if self.cancel_workflow():
+            context.report.update(
+                ExecutionReport(entity_count=0, operation_desc="files generated (cancelled")
+            )
+            return
 
-        entity_count = len(self.split_filenames)
-        operation_desc = "file generated" if entity_count == 1 else "files generated"
+        with TemporaryDirectory() as self.temp:
+            finished = self.execute_filesystem() if self.use_directory else self.execute_api()
+
+        operation_desc = "file generated" if self.moved_files == 1 else "files generated"
+        if not finished:
+            operation_desc += " (cancelled)"
         context.report.update(
-            ExecutionReport(entity_count=entity_count, operation_desc=operation_desc)
+            ExecutionReport(entity_count=self.moved_files, operation_desc=operation_desc)
         )

@@ -207,6 +207,8 @@ class SplitFilePlugin(WorkflowPlugin):
         """Execute plugin using the API"""
         file_path = Path(self.temp) / Path(self.input_filename).name
         self.get_file(file_path)
+        if self.cancel_workflow():
+            return False
         self.split_file(file_path)
 
         for filename in self.split_filenames:

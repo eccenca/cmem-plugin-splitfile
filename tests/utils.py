@@ -17,6 +17,7 @@ from cmem_plugin_base.dataintegration.context import (
     ReportContext,
     TaskContext,
     UserContext,
+    WorkflowContext,
 )
 
 needs_cmem = pytest.mark.skipif(
@@ -63,12 +64,28 @@ class TestTaskContext(TaskContext):
         self.task_id = lambda: task_id
 
 
+class TestWorkflowContext(WorkflowContext):
+    """dummy workflow context that can be used in tests"""
+
+    __test__ = False
+
+    def __init__(self, workflow_id: str = "dummyWorkflow"):
+        self.workflow_id = lambda: workflow_id
+        self.status = lambda: "Running"
+
+
 class TestExecutionContext(ExecutionContext):
     """dummy execution context that can be used in tests"""
 
     __test__ = False
 
-    def __init__(self, project_id: str = "dummyProject", task_id: str = "dummyTask"):
+    def __init__(
+        self,
+        project_id: str = "dummyProject",
+        task_id: str = "dummyTask",
+        workflow_id: str = "dummyWorkflow",
+    ):
         self.report = ReportContext()
         self.task = TestTaskContext(project_id=project_id, task_id=task_id)
         self.user = TestUserContext()
+        self.workflow = TestWorkflowContext(workflow_id=workflow_id)

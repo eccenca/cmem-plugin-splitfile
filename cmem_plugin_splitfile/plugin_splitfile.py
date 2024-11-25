@@ -156,12 +156,9 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
-        try:
-            if self.context.workflow.status() != "Running":
-                self.log.info("End task (Cancelled Workflow).")
-                return True
-        except AttributeError:
-            pass
+        if self.context.workflow.status() != "Running":
+            self.log.info("End task (Cancelled Workflow).")
+            return True
         return False
 
     def split_file(self, input_file_path: Path) -> None:

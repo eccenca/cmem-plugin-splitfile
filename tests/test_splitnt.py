@@ -162,7 +162,7 @@ def test_api_size_delete() -> None:
     try:
         get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
     except Exception as exc:
-        if type(exc) is HTTPError and exc.response.status_code == 404:  # noqa: PLR2004
+        if type(exc) is HTTPError and exc.status_code == 404:  # noqa: PLR2004
             pass
         else:
             raise

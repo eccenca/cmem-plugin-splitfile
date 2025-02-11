@@ -217,7 +217,7 @@ def test_api_empty_file() -> None:
 
 @pytest.mark.usefixtures("setup")
 def test_filesystem_empty_file() -> None:
-    """Test split by size using API"""
+    """Test empty input file using file system"""
     plugin = SplitFilePlugin(
         input_filename=f"empty_{TEST_FILENAME}",
         chunk_size=6,
@@ -233,7 +233,7 @@ def test_filesystem_empty_file() -> None:
 
 @pytest.mark.usefixtures("setup")
 def test_api_empty_file_delete() -> None:
-    """Test split by size using API"""
+    """Test empty input file using API, delete input file"""
     plugin = SplitFilePlugin(
         input_filename=f"empty_{TEST_FILENAME}",
         chunk_size=6,
@@ -249,7 +249,7 @@ def test_api_empty_file_delete() -> None:
 
 @pytest.mark.usefixtures("setup")
 def test_filesystem_empty_file_delete() -> None:
-    """Test split by size using API"""
+    """Test empty input file using file system, delete input file"""
     plugin = SplitFilePlugin(
         input_filename=f"empty_{TEST_FILENAME}",
         chunk_size=6,

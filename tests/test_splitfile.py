@@ -12,7 +12,7 @@ from cmem.cmempy.workspace.projects.resources.resource import create_resource, g
 from requests import HTTPError
 
 from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
-from tests.utils import TestExecutionContext, needs_cmem
+from tests.utils import TestExecutionContext
 
 from . import __path__
 
@@ -33,21 +33,26 @@ def setup(request: pytest.FixtureRequest) -> None:
         Path(__path__[0]) / "test_files" / TEST_FILENAME,
         Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME,
     )
+    (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").open("w").close()
 
     with (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).open("rb") as f:
-        buf = BytesIO(f.read())
         create_resource(
             project_name=PROJECT_ID,
             resource_name=TEST_FILENAME,
-            file_resource=buf,
+            file_resource=BytesIO(f.read()),
             replace=True,
         )
+    create_resource(
+        project_name=PROJECT_ID,
+        resource_name=f"empty_{TEST_FILENAME}",
+        file_resource=BytesIO(b""),
+        replace=True,
+    )
 
     request.addfinalizer(lambda: rmtree(Path(__path__[0]) / PROJECT_ID))
     request.addfinalizer(lambda: delete_project(PROJECT_ID))  # noqa: PT021
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size() -> None:
     """Test split by size using file system"""
@@ -69,7 +74,6 @@ def test_filesystem_size() -> None:
         raise OSError("Input file deleted.")
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size_header() -> None:
     """Test split by size with header using file system"""
@@ -92,7 +96,6 @@ def test_filesystem_size_header() -> None:
         raise OSError("Input file deleted.")
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_api_size() -> None:
     """Test split by size using API"""
@@ -115,7 +118,6 @@ def test_api_size() -> None:
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
@@ -138,7 +140,6 @@ def test_filesystem_size_delete() -> None:
         raise OSError("Input file not deleted.")
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
@@ -163,7 +164,6 @@ def test_api_size_delete() -> None:
         get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines() -> None:
     """Test split by lines using file system"""
@@ -182,7 +182,6 @@ def test_filesystem_lines() -> None:
         )
 
 
-@needs_cmem
 @pytest.mark.usefixtures("setup")
 def test_filesystem_lines_header() -> None:
     """Test split by lines with header using file system"""
@@ -200,3 +199,34 @@ def test_filesystem_lines_header() -> None:
             Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
             Path(__path__[0]) / "test_files" / f"{UUID4}_lines_header_00000000{n + 1}.nt",
         )
+
+
+@pytest.mark.usefixtures("setup")
+def test_api_empty_file() -> None:
+    """Test split by size using API"""
+    plugin = SplitFilePlugin(
+        input_filename=f"empty_{TEST_FILENAME}",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+    )
+    with pytest.raises(OSError, match="Input file is empty."):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
+        get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
+
+
+@pytest.mark.usefixtures("setup")
+def test_filesystem_empty_file() -> None:
+    """Test split by size using API"""
+    plugin = SplitFilePlugin(
+        input_filename=f"empty_{TEST_FILENAME}",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+    )
+    with pytest.raises(OSError, match="Input file is empty."):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    if (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
+        raise OSError("Input file not deleted.")

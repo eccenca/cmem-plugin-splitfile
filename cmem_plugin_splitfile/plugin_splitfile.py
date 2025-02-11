@@ -198,6 +198,10 @@ class SplitFilePlugin(WorkflowPlugin):
         }
         with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
             r.raise_for_status()
+            if r.text == "":
+                setup_cmempy_user_access(self.context.user)
+                delete_resource(self.context.task.project_id(), self.input_filename)
+                raise OSError("Input file is empty.")
             with file_path.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)
@@ -232,7 +236,12 @@ class SplitFilePlugin(WorkflowPlugin):
     def execute_filesystem(self) -> bool:
         """Execute plugin using file system"""
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
-        self.split_file(resources_path / self.input_filename)
+        input_file_path = resources_path / self.input_filename
+        if input_file_path.stat().st_size == 0:
+            input_file_path.unlink()
+            raise OSError("Input file is empty.")
+
+        self.split_file(input_file_path)
         input_file_parent = Path(self.input_filename).parent
         if str(input_file_parent) != ".":
             resources_path /= input_file_parent
@@ -245,7 +254,7 @@ class SplitFilePlugin(WorkflowPlugin):
             self.moved_files += 1
 
         if self.delete_file:
-            (resources_path / self.input_filename).unlink()
+            input_file_path.unlink()
         return True
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002

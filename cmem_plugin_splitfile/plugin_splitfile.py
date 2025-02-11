@@ -1,6 +1,7 @@
 """A task splitting a text file into multiple parts with a specified size"""
 
 from collections import OrderedDict
+from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
 from shutil import move
@@ -16,6 +17,7 @@ from cmem.cmempy.workspace.projects.resources.resource import (
 )
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
+from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs
@@ -134,7 +136,7 @@ class SplitFilePlugin(WorkflowPlugin):
             errors += "Minimum chunk size is 1024 bytes. "
 
         if use_directory:
-            test_path = projects_path[1:] if projects_path.startswith("/") else projects_path
+            test_path = projects_path.removeprefix("/")
             if not is_valid_filepath(test_path):
                 errors += 'Invalid path for parameter "Internal projects directory". '
             elif not Path(projects_path).is_dir():
@@ -246,7 +248,7 @@ class SplitFilePlugin(WorkflowPlugin):
             (resources_path / self.input_filename).unlink()
         return True
 
-    def execute(self, inputs: None, context: ExecutionContext) -> None:  # noqa: ARG002
+    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
         self.context = context
         context.report.update(ExecutionReport(entity_count=0, operation_desc="files generated"))

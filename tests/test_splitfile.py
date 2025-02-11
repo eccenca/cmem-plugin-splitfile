@@ -9,7 +9,7 @@ from shutil import copy, rmtree
 import pytest
 from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
 from cmem.cmempy.workspace.projects.resources.resource import create_resource, get_resource
-from requests.exceptions import HTTPError
+from requests import HTTPError
 
 from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
 from tests.utils import TestExecutionContext, needs_cmem
@@ -57,12 +57,12 @@ def test_filesystem_size() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
         )
 
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -80,12 +80,12 @@ def test_filesystem_size_header() -> None:
         include_header=True,
         projects_path=__path__[0],
         use_directory=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_size_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_header_00000000{n + 1}.nt",
         )
 
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -101,13 +101,13 @@ def test_api_size() -> None:
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt")
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt")
             .open("rb")
             .read()
         )
@@ -126,12 +126,12 @@ def test_filesystem_size_delete() -> None:
         projects_path=__path__[0],
         use_directory=True,
         delete_file=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
         )
 
     if (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
@@ -148,24 +148,19 @@ def test_api_size_delete() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         delete_file=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n+1}.nt")
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 1}.nt")
         assert (
             f
-            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n+1}.nt")
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt")
             .open("rb")
             .read()
         )
 
-    try:
+    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
         get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
-    except Exception as exc:
-        if type(exc) is HTTPError and exc.status_code == 404:  # noqa: PLR2004
-            pass
-        else:
-            raise
 
 
 @needs_cmem
@@ -178,12 +173,12 @@ def test_filesystem_lines() -> None:
         size_unit="Lines",
         projects_path=__path__[0],
         use_directory=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_00000000{n + 1}.nt",
         )
 
 
@@ -198,10 +193,10 @@ def test_filesystem_lines_header() -> None:
         include_header=True,
         projects_path=__path__[0],
         use_directory=True,
-    ).execute(None, context=TestExecutionContext(PROJECT_ID))
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
         assert cmp(
-            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n+1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_header_00000000{n+1}.nt",
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_lines_header_00000000{n + 1}.nt",
         )

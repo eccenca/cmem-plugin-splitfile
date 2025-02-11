@@ -212,8 +212,7 @@ def test_api_empty_file() -> None:
     )
     with pytest.raises(OSError, match="Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
-        get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
 @pytest.mark.usefixtures("setup")
@@ -225,6 +224,39 @@ def test_filesystem_empty_file() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
+    )
+    with pytest.raises(OSError, match="Input file is empty."):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
+        raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup")
+def test_api_empty_file_delete() -> None:
+    """Test split by size using API"""
+    plugin = SplitFilePlugin(
+        input_filename=f"empty_{TEST_FILENAME}",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        delete_file=True,
+    )
+    with pytest.raises(OSError, match="Input file is empty."):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
+        get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
+
+
+@pytest.mark.usefixtures("setup")
+def test_filesystem_empty_file_delete() -> None:
+    """Test split by size using API"""
+    plugin = SplitFilePlugin(
+        input_filename=f"empty_{TEST_FILENAME}",
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        delete_file=True,
     )
     with pytest.raises(OSError, match="Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))

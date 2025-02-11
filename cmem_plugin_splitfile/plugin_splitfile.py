@@ -199,8 +199,9 @@ class SplitFilePlugin(WorkflowPlugin):
         with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
             r.raise_for_status()
             if r.text == "":
-                setup_cmempy_user_access(self.context.user)
-                delete_resource(self.context.task.project_id(), self.input_filename)
+                if self.delete_file:
+                    setup_cmempy_user_access(self.context.user)
+                    delete_resource(self.context.task.project_id(), self.input_filename)
                 raise OSError("Input file is empty.")
             with file_path.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=10485760):
@@ -238,7 +239,8 @@ class SplitFilePlugin(WorkflowPlugin):
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         input_file_path = resources_path / self.input_filename
         if input_file_path.stat().st_size == 0:
-            input_file_path.unlink()
+            if self.delete_file:
+                input_file_path.unlink()
             raise OSError("Input file is empty.")
 
         self.split_file(input_file_path)

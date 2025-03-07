@@ -1,17 +1,14 @@
 """Plugin tests."""
+
 import stat
 from contextlib import suppress
-from filecmp import cmp
 from io import BytesIO
-from os import chmod
 from pathlib import Path
 from shutil import copy, rmtree
 
 import pytest
 from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
-from cmem.cmempy.workspace.projects.resources.resource import create_resource, get_resource
-from cmem_plugin_base.testing import TestExecutionContext
-from requests import HTTPError
+from cmem.cmempy.workspace.projects.resources.resource import create_resource
 
 from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
 
@@ -52,6 +49,7 @@ def setup(request: pytest.FixtureRequest) -> None:
 
     request.addfinalizer(lambda: rmtree(Path(__path__[0]) / PROJECT_ID))
     request.addfinalizer(lambda: delete_project(PROJECT_ID))  # noqa: PT021
+
 
 #
 # @pytest.mark.usefixtures("setup")
@@ -269,14 +267,14 @@ def test_action() -> None:
     """Test plugin action"""
     plugin = SplitFilePlugin()
 
-    projects_path = str(Path(__path__[0]))
+    projects_path = Path(__path__[0])
     plugin.projects_path = projects_path
     assert plugin.test_directory() == (
         f'Directory {projects_path} exists and is writable. For faster processing enable "Use '
         'internal projects directory".'
     )
 
-    projects_path = str(Path(__path__[0]) / "not_exist")
+    projects_path = Path(__path__[0]) / "not_exist"
     plugin.projects_path = projects_path
     assert plugin.test_directory() == (
         f'Directory {projects_path} does not exist. Disable "Use internal projects directory".'
@@ -284,10 +282,10 @@ def test_action() -> None:
 
     projects_path = Path(__path__[0]) / "non_writable"
     projects_path.mkdir(parents=True, exist_ok=True)
-    chmod(projects_path, stat.S_IREAD | stat.S_IEXEC)
-    plugin.projects_path = str(projects_path)
+    projects_path.chmod(stat.S_IREAD | stat.S_IEXEC)
+    plugin.projects_path = projects_path
     assert plugin.test_directory() == (
         f'Directory {projects_path} is not writable. Disable "Use internal projects directory".'
     )
-    chmod(projects_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    projects_path.chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     rmtree(projects_path, ignore_errors=True)

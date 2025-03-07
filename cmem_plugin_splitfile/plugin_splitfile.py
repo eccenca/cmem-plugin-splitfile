@@ -1,6 +1,7 @@
 """A task splitting a text file into multiple parts with a specified size"""
 
 import errno
+import re
 from collections import OrderedDict
 from collections.abc import Sequence
 from io import BytesIO
@@ -32,6 +33,19 @@ from pathvalidate import is_valid_filepath
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
+
+CONF = Path("/opt/cmem/eccenca-DataIntegration/dist/etc/dataintegration/conf/dataintegration.conf")
+
+PROJECTFILEPATH = ""
+if CONF.is_file():
+    with CONF.open("r") as conf_file:
+        conf_lines = list(conf_file.readlines())
+    for line, text in enumerate(conf_lines):
+        if text == "workspace.repository.projectFile = {\n":
+            match = re.search(r'=\s*["\'](.*?)["\']', conf_lines[line + 1])
+            if match:
+                PROJECTFILEPATH = match.group(1)
+            break
 
 
 @Plugin(
@@ -96,14 +110,14 @@ from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
             label="Internal projects directory",
             description="""The path to the internal projects directory. If "Use internal projects
             directory" is disabled, this parameter has no effect.""",
-            advanced=False,
+            advanced=True,
         ),
     ],
 )
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0913
+    def __init__(  # noqa: C901 PLR0912 PLR0913
         self,
         input_filename: str = "dummy",
         chunk_size: float = 100,
@@ -111,13 +125,12 @@ class SplitFilePlugin(WorkflowPlugin):
         include_header: bool = False,
         delete_file: bool = False,
         use_directory: bool = False,
-        projects_path: str = "/data/datalake",
+        projects_path: str = PROJECTFILEPATH,
         # projects_path: str =  "tests/test_files/test_action"
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
             errors += 'Invalid filename for parameter "Input filename". '
-
 
         self.lines = False
         match size_unit.lower():
@@ -146,6 +159,11 @@ class SplitFilePlugin(WorkflowPlugin):
 
         if errors:
             raise ValueError(errors[:-1])
+
+        if use_directory:
+            test_dir_result = self.test_directory()
+            if not test_dir_result.startswith(f"Directory {self.projects_path} exists"):
+                errors += test_dir_result + " "
 
         self.input_filename = input_filename
         self.size = int(chunk_size)
@@ -297,4 +315,3 @@ class SplitFilePlugin(WorkflowPlugin):
         context.report.update(
             ExecutionReport(entity_count=self.moved_files, operation_desc=operation_desc)
         )
-

@@ -1,12 +1,12 @@
 """A task splitting a text file into multiple parts with a specified size"""
 
+import errno
 from collections import OrderedDict
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
 from shutil import move
-from tempfile import TemporaryDirectory
-from warnings import simplefilter
+from tempfile import TemporaryDirectory, TemporaryFile
 
 import requests
 from cmem.cmempy.api import config, get_access_token
@@ -16,7 +16,7 @@ from cmem.cmempy.workspace.projects.resources.resource import (
     get_resource_uri,
 )
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
-from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
+from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
@@ -29,12 +29,9 @@ from cmem_plugin_base.dataintegration.types import (
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from filesplit.split import Split
 from pathvalidate import is_valid_filepath
-from urllib3.exceptions import InsecureRequestWarning
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
-
-simplefilter("ignore", category=InsecureRequestWarning)
 
 
 @Plugin(
@@ -42,6 +39,13 @@ simplefilter("ignore", category=InsecureRequestWarning)
     description="Split a file into multiple parts with a specified size.",
     documentation=SPLITFILE_DOC,
     icon=Icon(package=__package__, file_name="splitfile.svg"),
+    actions=[
+        PluginAction(
+            name="test_directory",
+            label="Test directory",
+            description="Test if the internal projects directory exists and is writable",
+        ),
+    ],
     parameters=[
         PluginParameter(
             param_type=ResourceParameterType(),
@@ -63,7 +67,6 @@ simplefilter("ignore", category=InsecureRequestWarning)
             label="Size unit",
             description="""The unit of the size value: kilobyte (KB), megabyte (MB), gigabyte (GB),
             or number of lines (Lines).""",
-            default_value="MB",
         ),
         PluginParameter(
             param_type=BoolParameterType(),
@@ -71,14 +74,12 @@ simplefilter("ignore", category=InsecureRequestWarning)
             label="Include header",
             description="""Include the header in each split. The first line of the input file is
             treated as the header.""",
-            default_value=False,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
             name="delete_file",
             label="Delete input file",
             description="Delete the input file after splitting.",
-            default_value=False,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
@@ -87,7 +88,6 @@ simplefilter("ignore", category=InsecureRequestWarning)
             description="""Use the internal projects directory of DataIntegration to fetch and store
             files, instead of using the API. If enabled, the "Internal projects directory" parameter
             has to be set.""",
-            default_value=False,
             advanced=True,
         ),
         PluginParameter(
@@ -96,8 +96,7 @@ simplefilter("ignore", category=InsecureRequestWarning)
             label="Internal projects directory",
             description="""The path to the internal projects directory. If "Use internal projects
             directory" is disabled, this parameter has no effect.""",
-            default_value="/data/datalake",
-            advanced=True,
+            advanced=False,
         ),
     ],
 )
@@ -106,17 +105,19 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def __init__(  # noqa: C901 PLR0913
         self,
-        input_filename: str,
-        chunk_size: float,
+        input_filename: str = "dummy",
+        chunk_size: float = 100,
         size_unit: str = "MB",
         include_header: bool = False,
         delete_file: bool = False,
         use_directory: bool = False,
         projects_path: str = "/data/datalake",
+        # projects_path: str =  "tests/test_files/test_action"
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
             errors += 'Invalid filename for parameter "Input filename". '
+
 
         self.lines = False
         match size_unit.lower():
@@ -135,6 +136,7 @@ class SplitFilePlugin(WorkflowPlugin):
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
 
+        self.projects_path = Path(projects_path)
         if use_directory:
             test_path = projects_path.removeprefix("/")
             if not is_valid_filepath(test_path):
@@ -147,7 +149,6 @@ class SplitFilePlugin(WorkflowPlugin):
 
         self.input_filename = input_filename
         self.size = int(chunk_size)
-        self.projects_path = Path(projects_path)
         self.include_header = include_header
         self.delete_file = delete_file
         self.use_directory = use_directory
@@ -156,9 +157,26 @@ class SplitFilePlugin(WorkflowPlugin):
         self.moved_files = 0
         self.split_filenames: list[str] = []
 
+    def test_directory(self) -> str:
+        """Test specified projects directory"""
+        add_msg = 'Disable "Use internal projects directory".'
+        if not Path(self.projects_path).is_dir():
+            return f"Directory {self.projects_path} does not exist. {add_msg}"
+        try:
+            with TemporaryFile(dir=self.projects_path):
+                pass
+        except OSError as e:
+            if e.errno == errno.EACCES:
+                return f"Directory {self.projects_path} is not writable. {add_msg}"
+            return f"Error writing to {self.projects_path} ({e.errno}). {add_msg}"
+        return (
+            f"Directory {self.projects_path} exists and is writable. For faster processing enable "
+            '"Use internal projects directory".'
+        )
+
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
-        if self.context.workflow.status() != "Running":
+        if hasattr(self.context, "workflow") and self.context.workflow.status() != "Running":
             self.log.info("End task (Cancelled Workflow).")
             return True
         return False

@@ -297,3 +297,4 @@ class SplitFilePlugin(WorkflowPlugin):
         context.report.update(
             ExecutionReport(entity_count=self.moved_files, operation_desc=operation_desc)
         )
+

@@ -1,8 +1,9 @@
 """Plugin tests."""
-
+import stat
 from contextlib import suppress
 from filecmp import cmp
 from io import BytesIO
+from os import chmod
 from pathlib import Path
 from shutil import copy, rmtree
 
@@ -267,5 +268,26 @@ def setup(request: pytest.FixtureRequest) -> None:
 def test_action() -> None:
     """Test plugin action"""
     plugin = SplitFilePlugin()
-    response = plugin.test_directory()
-    raise ValueError(response)
+
+    projects_path = str(Path(__path__[0]) / "test_files")
+    plugin.projects_path = projects_path
+    assert plugin.test_directory() == (
+        f'Directory {projects_path} exists and is writable. For faster processing enable "Use '
+        'internal projects directory".'
+    )
+
+    projects_path = str(Path(__path__[0]) / "not_exist")
+    plugin.projects_path = projects_path
+    assert plugin.test_directory() == (
+        f'Directory {projects_path} does not exist. Disable "Use internal projects directory".'
+    )
+
+    projects_path = Path(__path__[0]) / "non_writable"
+    projects_path.mkdir(parents=True, exist_ok=True)
+    chmod(projects_path, stat.S_IREAD | stat.S_IEXEC)
+    plugin.projects_path = str(projects_path)
+    assert plugin.test_directory() == (
+        f'Directory {projects_path} is not writable. Disable "Use internal projects directory".'
+    )
+    chmod(projects_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    rmtree(projects_path, ignore_errors=True)

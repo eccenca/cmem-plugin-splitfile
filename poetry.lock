@@ -242,14 +242,14 @@ requests-toolbelt = ">=1.0.0,<2.0.0"
 
 [[package]]
 name = "cmem-plugin-base"
-version = "4.10.0rc2"
+version = "4.10.0rc1"
 description = "Base classes for developing eccenca Corporate Memory plugins."
 optional = false
 python-versions = "<4.0,>=3.11"
 groups = ["main"]
 files = [
-    {file = "cmem_plugin_base-4.10.0rc2-py3-none-any.whl", hash = "sha256:119cd356ec8ccaca8b4c25afe325b2a11cba31b5c40e631a4d71da288c0959a6"},
-    {file = "cmem_plugin_base-4.10.0rc2.tar.gz", hash = "sha256:48bb9fd7ec750ce0f605261f377de1de2a711ebdda7e47e4e83db5dd24684954"},
+    {file = "cmem_plugin_base-4.10.0rc1-py3-none-any.whl", hash = "sha256:2be9b0edb782daa1f750fab5da05dade985b66327709901235f1b520d763c7b9"},
+    {file = "cmem_plugin_base-4.10.0rc1.tar.gz", hash = "sha256:77b19cf5a25887cb66bf7cfc10879ea21832dd3fd401f4ba8fe10386860c6f69"},
 ]
 
 [package.dependencies]
@@ -1592,4 +1592,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "374589a622ac4ec982b409e8550f5cbe0ca85f1de3e3f9115cb76f22f75b1f92"
+content-hash = "322113b7215735f5527e65e0f7bca2546a321a231770b2a73f77dd756e4a1f35"

@@ -1,7 +1,6 @@
 """A task splitting a text file into multiple parts with a specified size"""
 
 import errno
-import re
 from collections import OrderedDict
 from collections.abc import Sequence
 from io import BytesIO
@@ -34,18 +33,7 @@ from pathvalidate import is_valid_filepath
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 
-CONF = Path("/opt/cmem/eccenca-DataIntegration/dist/etc/dataintegration/conf/dataintegration.conf")
-
-PROJECTFILEPATH = ""
-if CONF.is_file():
-    with CONF.open("r") as conf_file:
-        conf_lines = list(conf_file.readlines())
-    for line, text in enumerate(conf_lines):
-        if text == "workspace.repository.projectFile = {\n":
-            match = re.search(r'=\s*["\'](.*?)["\']', conf_lines[line + 1])
-            if match:
-                PROJECTFILEPATH = match.group(1)
-            break
+from . import PROJECTFILEPATH
 
 
 @Plugin(

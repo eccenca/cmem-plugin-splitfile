@@ -269,7 +269,7 @@ def test_action() -> None:
     """Test plugin action"""
     plugin = SplitFilePlugin()
 
-    projects_path = str(Path(__path__[0]) / "test_files")
+    projects_path = str(Path(__path__[0]))
     plugin.projects_path = projects_path
     assert plugin.test_directory() == (
         f'Directory {projects_path} exists and is writable. For faster processing enable "Use '

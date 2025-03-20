@@ -112,7 +112,7 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0913
+    def __init__(  # noqa: C901 PLR0912 PLR0913
         self,
         input_filename: str,
         chunk_size: float,

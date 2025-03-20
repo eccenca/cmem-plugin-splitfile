@@ -6,7 +6,6 @@ from io import BytesIO
 from pathlib import Path
 from shutil import move
 from tempfile import TemporaryDirectory
-from warnings import simplefilter
 
 import requests
 from cmem.cmempy.api import config, get_access_token
@@ -29,12 +28,23 @@ from cmem_plugin_base.dataintegration.types import (
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from filesplit.split import Split
 from pathvalidate import is_valid_filepath
-from urllib3.exceptions import InsecureRequestWarning
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 
-simplefilter("ignore", category=InsecureRequestWarning)
+DEFAULT_PROJECT_DIR = "/data/datalake"
+SIZE_UNIT_KB = "kb"
+SIZE_UNIT_MB = "mb"
+SIZE_UNIT_GB = "gb"
+SIZE_UNIT_LINES = "lines"
+SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
+    {
+        SIZE_UNIT_KB: "KB",
+        SIZE_UNIT_MB: "MB",
+        SIZE_UNIT_GB: "GB",
+        SIZE_UNIT_LINES: "lines",
+    }
+)
 
 
 @Plugin(
@@ -56,9 +66,7 @@ simplefilter("ignore", category=InsecureRequestWarning)
             description="The maximum size of the chunk files.",
         ),
         PluginParameter(
-            param_type=ChoiceParameterType(
-                OrderedDict({"KB": "KB", "MB": "MB", "GB": "GB", "lines": "Lines"})
-            ),
+            param_type=ChoiceParameterType(SIZE_UNIT_PARAMETER_CHOICES),
             name="size_unit",
             label="Size unit",
             description="""The unit of the size value: kilobyte (KB), megabyte (MB), gigabyte (GB),
@@ -96,7 +104,7 @@ simplefilter("ignore", category=InsecureRequestWarning)
             label="Internal projects directory",
             description="""The path to the internal projects directory. If "Use internal projects
             directory" is disabled, this parameter has no effect.""",
-            default_value="/data/datalake",
+            default_value=DEFAULT_PROJECT_DIR,
             advanced=True,
         ),
     ],
@@ -108,26 +116,28 @@ class SplitFilePlugin(WorkflowPlugin):
         self,
         input_filename: str,
         chunk_size: float,
-        size_unit: str = "MB",
+        size_unit: str = SIZE_UNIT_MB,
         include_header: bool = False,
         delete_file: bool = False,
         use_directory: bool = False,
-        projects_path: str = "/data/datalake",
+        projects_path: str = DEFAULT_PROJECT_DIR,
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
             errors += 'Invalid filename for parameter "Input filename". '
 
         self.lines = False
-        match size_unit.lower():
-            case "kb":
-                chunk_size *= 1024
-            case "mb":
-                chunk_size *= 1048576
-            case "gb":
-                chunk_size *= 1073741824
-            case "lines":
-                self.lines = True
+        size_unit = size_unit.lower()
+        if size_unit == SIZE_UNIT_KB:
+            chunk_size *= 1024
+        elif size_unit == SIZE_UNIT_MB:
+            chunk_size *= 1048576
+        elif size_unit == SIZE_UNIT_GB:
+            chunk_size *= 1073741824
+        elif size_unit == SIZE_UNIT_LINES:
+            self.lines = True
+        else:
+            errors += "Invalid size unit. "
 
         if self.lines:
             if int(chunk_size) != chunk_size or chunk_size < 1:

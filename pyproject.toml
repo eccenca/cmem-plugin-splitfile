@@ -17,8 +17,7 @@ keywords = [
 python = "^3.11"
 pathvalidate = "^3.2.3"
 filesplit = "^4.1.0"
-types-requests = "^2.32.0.20241016"
-urllib3 = "^2.2.3"
+types-requests = "^2.32.0.20250306"
 
 [tool.poetry.dependencies.cmem-plugin-base]
 version = "^4.5.0"

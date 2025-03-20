@@ -42,7 +42,7 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
         SIZE_UNIT_KB: "KB",
         SIZE_UNIT_MB: "MB",
         SIZE_UNIT_GB: "GB",
-        SIZE_UNIT_LINES: "lines",
+        SIZE_UNIT_LINES: "Lines",
     }
 )
 

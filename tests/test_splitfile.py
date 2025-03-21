@@ -1,11 +1,13 @@
 """Plugin tests."""
 
+from collections.abc import Generator
 from contextlib import suppress
 from filecmp import cmp
 from io import BytesIO
 from pathlib import Path
 from secrets import token_hex
 from shutil import copy, rmtree
+from typing import Any
 
 import pytest
 from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
@@ -23,7 +25,7 @@ TEST_FILENAME = f"{UUID4}.nt"
 
 
 @pytest.fixture
-def setup(request: pytest.FixtureRequest) -> None:
+def setup() -> Generator[None, Any, None]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
@@ -50,8 +52,10 @@ def setup(request: pytest.FixtureRequest) -> None:
         replace=True,
     )
 
-    request.addfinalizer(lambda: rmtree(Path(__path__[0]) / PROJECT_ID))
-    request.addfinalizer(lambda: delete_project(PROJECT_ID))  # noqa: PT021
+    yield
+
+    rmtree(Path(__path__[0]) / PROJECT_ID)
+    delete_project(PROJECT_ID)
 
 
 @pytest.mark.usefixtures("setup")

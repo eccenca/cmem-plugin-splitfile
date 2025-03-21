@@ -141,7 +141,7 @@ class SplitFilePlugin(WorkflowPlugin):
 
         if self.lines:
             if int(chunk_size) != chunk_size or chunk_size < 1:
-                errors += "Invalid chunk size. "
+                errors += "Invalid chunk size for lines. "
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
 

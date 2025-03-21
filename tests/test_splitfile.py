@@ -4,6 +4,7 @@ from contextlib import suppress
 from filecmp import cmp
 from io import BytesIO
 from pathlib import Path
+from secrets import token_hex
 from shutil import copy, rmtree
 
 import pytest
@@ -262,3 +263,39 @@ def test_filesystem_empty_file_delete() -> None:
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     if (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
         raise OSError("Input file not deleted.")
+
+
+def test_parameter_validation() -> None:
+    """Test parameter validation"""
+    with pytest.raises(ValueError, match="Invalid filename for parameter"):
+        SplitFilePlugin(input_filename="", chunk_size=6)
+
+    with pytest.raises(ValueError, match="Invalid size unit"):
+        SplitFilePlugin(input_filename="file", chunk_size=6, size_unit="")
+
+    SplitFilePlugin(input_filename="file", chunk_size=1, size_unit="lines")
+    with pytest.raises(ValueError, match="Invalid chunk size for lines"):
+        SplitFilePlugin(input_filename="file", chunk_size=1.5, size_unit="lines")
+
+    with pytest.raises(ValueError, match="Invalid chunk size for lines"):
+        SplitFilePlugin(input_filename="file", chunk_size=-1, size_unit="lines")
+
+    with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
+        SplitFilePlugin(input_filename="file", size_unit="KB", chunk_size=0.5)
+
+    SplitFilePlugin(input_filename="file", size_unit="MB", chunk_size=0.001)
+    with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
+        SplitFilePlugin(input_filename="file", size_unit="MB", chunk_size=0.0004)
+
+    SplitFilePlugin(input_filename="file", size_unit="GB", chunk_size=0.000001)
+    with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
+        SplitFilePlugin(input_filename="file", size_unit="GB", chunk_size=0.0000005)
+
+    with pytest.raises(ValueError, match="Invalid path for parameter"):
+        SplitFilePlugin(input_filename="file", chunk_size=6, use_directory=True, projects_path="?")
+
+    projects_path = token_hex(8)
+    with pytest.raises(ValueError, match=f"Directory {projects_path} does not exist"):
+        SplitFilePlugin(
+            input_filename="file", chunk_size=6, use_directory=True, projects_path=projects_path
+        )

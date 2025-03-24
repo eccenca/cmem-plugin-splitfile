@@ -28,7 +28,8 @@ Include the header in each split. The first line of the input file is treated as
 ### Use internal projects directory
 
 Use the internal projects directory of DataItegration to fetch and store files, instead of using the API.
-If enabled, the "Internal projects directory" parameter has to be set.
+If enabled, the "Internal projects directory" parameter has to be set. The split files will be stored in 
+a subdirectory with the name of the project identifier.
 
 ### Internal projects directory
 

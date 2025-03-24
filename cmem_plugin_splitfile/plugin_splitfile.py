@@ -94,7 +94,8 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             label="Use internal projects directory",
             description="""Use the internal projects directory of DataIntegration to fetch and store
             files, instead of using the API. If enabled, the "Internal projects directory" parameter
-            has to be set.""",
+            has to be set. The split files will be stored in a subdirectory with the name of the
+            project identifier.""",
             default_value=False,
             advanced=True,
         ),

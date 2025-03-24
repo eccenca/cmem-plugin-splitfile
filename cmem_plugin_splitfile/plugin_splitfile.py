@@ -169,7 +169,7 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
-        if self.context.workflow.status() != "Running":
+        if hasattr(self.context, "workflow") and self.context.workflow.status() != "Running":
             self.log.info("End task (Cancelled Workflow).")
             return True
         return False

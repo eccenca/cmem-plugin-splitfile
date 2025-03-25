@@ -108,6 +108,15 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             default_value=DEFAULT_PROJECT_DIR,
             advanced=True,
         ),
+        PluginParameter(
+            param_type=StringParameterType(),
+            name="target_path",
+            label="Target directory",
+            description="""The path the output files are written to. If not specified, the internal
+            projects directory is used.""",
+            default_value="",
+            advanced=True,
+        ),
     ],
 )
 class SplitFilePlugin(WorkflowPlugin):
@@ -122,6 +131,7 @@ class SplitFilePlugin(WorkflowPlugin):
         delete_file: bool = False,
         use_directory: bool = False,
         projects_path: str = DEFAULT_PROJECT_DIR,
+        target_path: str = "",
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
@@ -152,6 +162,12 @@ class SplitFilePlugin(WorkflowPlugin):
                 errors += 'Invalid path for parameter "Internal projects directory". '
             elif not Path(projects_path).is_dir():
                 errors += f"Directory {projects_path} does not exist. "
+            if target_path:
+                test_path = target_path.removeprefix("/")
+                if not is_valid_filepath(test_path):
+                    errors += 'Invalid path for parameter "Target directory". '
+                elif not Path(target_path).is_dir():
+                    errors += f"Directory {target_path} does not exist. "
 
         if errors:
             raise ValueError(errors[:-1])
@@ -159,6 +175,7 @@ class SplitFilePlugin(WorkflowPlugin):
         self.input_filename = input_filename
         self.size = int(chunk_size)
         self.projects_path = Path(projects_path)
+        self.target_path = target_path
         self.include_header = include_header
         self.delete_file = delete_file
         self.use_directory = use_directory
@@ -255,15 +272,20 @@ class SplitFilePlugin(WorkflowPlugin):
             raise OSError("Input file is empty.")
 
         self.split_file(input_file_path)
-        input_file_parent = Path(self.input_filename).parent
-        if str(input_file_parent) != ".":
-            resources_path /= input_file_parent
-            resources_path.mkdir(exist_ok=True)
+
+        if self.target_path:
+            target_path = Path(self.target_path)
+        else:
+            input_file_parent = Path(self.input_filename).parent
+            target_path = resources_path
+            if str(input_file_parent) != ".":
+                target_path /= input_file_parent
+                target_path.mkdir(exist_ok=True)
 
         for filename in self.split_filenames:
             if self.cancel_workflow():
                 return False
-            move(Path(filename), resources_path / Path(filename).name)
+            move(Path(filename), target_path / Path(filename).name)
             self.moved_files += 1
 
         if self.delete_file:

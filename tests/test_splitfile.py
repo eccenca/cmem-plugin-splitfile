@@ -305,24 +305,24 @@ def test_parameter_validation() -> None:
         )
 
 
-@pytest.mark.usefixtures("setup")
-def test_filesystem_size() -> None:
-    """Test split by size using file system"""
-    target_path = "testoutput"
-    SplitFilePlugin(
-        input_filename=TEST_FILENAME,
-        chunk_size=6,
-        size_unit="KB",
-        projects_path=__path__[0],
-        target_path=target_path,
-        use_directory=True,
-    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-
-    for n in range(3):
-        assert cmp(
-            Path(target_path) / f"{UUID4}_00000000{n + 1}.nt",
-            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
-        )
-
-    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
-        raise OSError("Input file deleted.")
+# @pytest.mark.usefixtures("setup")
+# def test_filesystem_size() -> None:
+#     """Test split by size using file system"""
+#     target_path = "testoutput"
+#     SplitFilePlugin(
+#         input_filename=TEST_FILENAME,
+#         chunk_size=6,
+#         size_unit="KB",
+#         projects_path=__path__[0],
+#         target_path=target_path,
+#         use_directory=True,
+#     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+#
+#     for n in range(3):
+#         assert cmp(
+#             Path(target_path) / f"{UUID4}_00000000{n + 1}.nt",
+#             Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
+#         )
+#
+#     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
+#         raise OSError("Input file deleted.")

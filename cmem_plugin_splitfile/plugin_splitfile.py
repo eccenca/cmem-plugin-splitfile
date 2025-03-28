@@ -1,5 +1,6 @@
 """A task splitting a text file into multiple parts with a specified size"""
 
+import re
 from collections import OrderedDict
 from collections.abc import Sequence
 from io import BytesIO
@@ -33,6 +34,7 @@ from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 
 DEFAULT_PROJECT_DIR = "/data/datalake"
+CUSTOM_TARGET_DIR = "/data/disqover"
 SIZE_UNIT_KB = "kb"
 SIZE_UNIT_MB = "mb"
 SIZE_UNIT_GB = "gb"
@@ -71,7 +73,6 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             label="Size unit",
             description="""The unit of the size value: kilobyte (KB), megabyte (MB), gigabyte (GB),
             or number of lines (Lines).""",
-            default_value="MB",
         ),
         PluginParameter(
             param_type=BoolParameterType(),
@@ -79,14 +80,12 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             label="Include header",
             description="""Include the header in each split. The first line of the input file is
             treated as the header.""",
-            default_value=False,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
             name="delete_file",
             label="Delete input file",
             description="Delete the input file after splitting.",
-            default_value=False,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
@@ -96,7 +95,6 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             files, instead of using the API. If enabled, the "Internal projects directory" parameter
             has to be set. The split files will be stored in a subdirectory with the name of the
             project identifier.""",
-            default_value=False,
             advanced=True,
         ),
         PluginParameter(
@@ -105,17 +103,22 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             label="Internal projects directory",
             description="""The path to the internal projects directory. If "Use internal projects
             directory" is disabled, this parameter has no effect.""",
-            default_value=DEFAULT_PROJECT_DIR,
+            advanced=True,
+        ),
+        PluginParameter(
+            param_type=BoolParameterType(),
+            name="custom_target_directory",
+            label='Use custom target directory "data/disqover"',
+            description=f"""If enabled the output files are written to "{CUSTOM_TARGET_DIR}".""",
             advanced=True,
         ),
         PluginParameter(
             param_type=StringParameterType(),
-            name="target_path",
-            label="Target directory",
-            description="""The path the output files are written to. If not specified, the internal
-            projects directory is used.""",
-            default_value="",
-            advanced=True,
+            name="delete_file_regex",
+            label=f"""Regular expression for files to be deleted from the target folder
+            "{CUSTOM_TARGET_DIR}" before execution""",
+            description="""Regular expression for files to be deleted from the target folder before
+            execution. Only applies if 'Use internal projects directory' is enabled""",
         ),
     ],
 )
@@ -131,7 +134,8 @@ class SplitFilePlugin(WorkflowPlugin):
         delete_file: bool = False,
         use_directory: bool = False,
         projects_path: str = DEFAULT_PROJECT_DIR,
-        target_path: str = "",
+        custom_target_directory: bool = False,
+        delete_file_regex: str = "",
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
@@ -162,12 +166,12 @@ class SplitFilePlugin(WorkflowPlugin):
                 errors += 'Invalid path for parameter "Internal projects directory". '
             elif not Path(projects_path).is_dir():
                 errors += f"Directory {projects_path} does not exist. "
-            if target_path:
-                test_path = target_path.removeprefix("/")
+            if custom_target_directory:
+                test_path = CUSTOM_TARGET_DIR.removeprefix("/")
                 if not is_valid_filepath(test_path):
                     errors += 'Invalid path for parameter "Target directory". '
-                elif not Path(target_path).is_dir():
-                    errors += f"Directory {target_path} does not exist. "
+                elif not Path(CUSTOM_TARGET_DIR).is_dir():
+                    errors += f"Directory {CUSTOM_TARGET_DIR} does not exist. "
 
         if errors:
             raise ValueError(errors[:-1])
@@ -175,10 +179,11 @@ class SplitFilePlugin(WorkflowPlugin):
         self.input_filename = input_filename
         self.size = int(chunk_size)
         self.projects_path = Path(projects_path)
-        self.target_path = target_path
+        self.custom_target_directory = custom_target_directory
         self.include_header = include_header
         self.delete_file = delete_file
         self.use_directory = use_directory
+        self.delete_file_regex = re.compile(delete_file_regex)
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
         self.moved_files = 0
@@ -273,8 +278,8 @@ class SplitFilePlugin(WorkflowPlugin):
 
         self.split_file(input_file_path)
 
-        if self.target_path:
-            target_path = Path(self.target_path)
+        if self.custom_target_directory:
+            target_path = Path(CUSTOM_TARGET_DIR)
         else:
             input_file_parent = Path(self.input_filename).parent
             target_path = resources_path
@@ -302,6 +307,15 @@ class SplitFilePlugin(WorkflowPlugin):
                 ExecutionReport(entity_count=0, operation_desc="files generated (cancelled")
             )
             return
+
+        if self.delete_file_regex:
+            files = [
+                f
+                for f in Path(CUSTOM_TARGET_DIR).iterdir()
+                if re.match(self.delete_file_regex, f.name)
+            ]
+            for f in files:
+                f.unlink(missing_ok=True)
 
         with TemporaryDirectory() as self.temp:
             finished = self.execute_filesystem() if self.use_directory else self.execute_api()

@@ -115,7 +115,7 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
         PluginParameter(
             param_type=StringParameterType(),
             name="delete_file_regex",
-            label=f"""Regular expression for files to be deleted from the target folder
+            label=f"""Regex for files to be deleted from the target folder
             "{CUSTOM_TARGET_DIR}" before execution""",
             description="""Regular expression for files to be deleted from the target folder before
             execution. Only applies if 'Use internal projects directory' is enabled""",

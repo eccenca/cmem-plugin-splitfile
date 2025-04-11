@@ -272,8 +272,6 @@ class SplitFilePlugin(WorkflowPlugin):
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         input_file_path = resources_path / self.input_filename
         if input_file_path.stat().st_size == 0:
-            if self.delete_input_file:
-                input_file_path.unlink()
             raise OSError("Input file is empty.")
 
         if self.custom_target_directory:

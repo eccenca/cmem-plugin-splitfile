@@ -34,7 +34,6 @@ from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 
 DEFAULT_PROJECT_DIR = "/data/datalake"
-CUSTOM_TARGET_DIR = "/data/disqover"
 SIZE_UNIT_KB = "kb"
 SIZE_UNIT_MB = "mb"
 SIZE_UNIT_GB = "gb"
@@ -47,6 +46,8 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
         SIZE_UNIT_LINES: "Lines",
     }
 )
+
+SPLIT_ZERO_FILL = 9
 
 
 @Plugin(
@@ -83,20 +84,20 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
         ),
         PluginParameter(
             param_type=BoolParameterType(),
-            name="delete_file",
+            name="delete_input_file",
             label="Delete input file",
             description="Delete the input file after splitting.",
         ),
-        PluginParameter(
-            param_type=BoolParameterType(),
-            name="use_directory",
-            label="Use internal projects directory",
-            description="""Use the internal projects directory of DataIntegration to fetch and store
-            files, instead of using the API. If enabled, the "Internal projects directory" parameter
-            has to be set. The split files will be stored in a subdirectory with the name of the
-            project identifier.""",
-            advanced=True,
-        ),
+        # PluginParameter(
+        #     param_type=BoolParameterType(),
+        #     name="use_directory",
+        #     label="Use internal projects directory",
+        #   description="""Use the internal projects directory of DataIntegration to fetch and store
+        #   files, instead of using the API. If enabled, the "Internal projects directory" parameter
+        #     has to be set. The split files will be stored in a subdirectory with the name of the
+        #     project identifier.""",
+        #     advanced=True,
+        # ),
         PluginParameter(
             param_type=StringParameterType(),
             name="projects_path",
@@ -106,19 +107,19 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
             advanced=True,
         ),
         PluginParameter(
-            param_type=BoolParameterType(),
+            param_type=StringParameterType(),
             name="custom_target_directory",
-            label='Use custom target directory "data/disqover"',
-            description=f"""If enabled the output files are written to "{CUSTOM_TARGET_DIR}".""",
+            label="Custom target directory",
+            description="""If enabled the output files are written to this directory instead of the
+            project path.""",
             advanced=True,
         ),
         PluginParameter(
-            param_type=StringParameterType(),
-            name="delete_file_regex",
-            label=f"""Regex for files to be deleted from the target folder
-            "{CUSTOM_TARGET_DIR}" before execution""",
-            description="""Regular expression for files to be deleted from the target folder before
-            execution. Only applies if 'Use internal projects directory' is enabled""",
+            param_type=BoolParameterType(),
+            name="delete_previous_result",
+            label="""Delete previous result.""",
+            description="""Delete previous result from splitting a file with the input filename from
+            the custom target directory.""",
         ),
     ],
 )
@@ -131,11 +132,11 @@ class SplitFilePlugin(WorkflowPlugin):
         chunk_size: float,
         size_unit: str = SIZE_UNIT_MB,
         include_header: bool = False,
-        delete_file: bool = False,
-        use_directory: bool = False,
+        delete_input_file: bool = False,
+        # use_directory: bool = True,
         projects_path: str = DEFAULT_PROJECT_DIR,
-        custom_target_directory: bool = False,
-        delete_file_regex: str = "",
+        custom_target_directory: str = "",
+        delete_previous_result: bool = False,
     ) -> None:
         errors = ""
         if not is_valid_filepath(input_filename):
@@ -160,6 +161,7 @@ class SplitFilePlugin(WorkflowPlugin):
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
 
+        use_directory = True
         if use_directory:
             test_path = projects_path.removeprefix("/")
             if not is_valid_filepath(test_path):
@@ -167,11 +169,11 @@ class SplitFilePlugin(WorkflowPlugin):
             elif not Path(projects_path).is_dir():
                 errors += f"Directory {projects_path} does not exist. "
             if custom_target_directory:
-                test_path = CUSTOM_TARGET_DIR.removeprefix("/")
+                test_path = custom_target_directory.removeprefix("/")
                 if not is_valid_filepath(test_path):
                     errors += 'Invalid path for parameter "Target directory". '
-                elif not Path(CUSTOM_TARGET_DIR).is_dir():
-                    errors += f"Directory {CUSTOM_TARGET_DIR} does not exist. "
+                elif not Path(custom_target_directory).is_dir():
+                    errors += f"Directory {custom_target_directory} does not exist. "
 
         if errors:
             raise ValueError(errors[:-1])
@@ -181,9 +183,10 @@ class SplitFilePlugin(WorkflowPlugin):
         self.projects_path = Path(projects_path)
         self.custom_target_directory = custom_target_directory
         self.include_header = include_header
-        self.delete_file = delete_file
+        self.delete_input_file = delete_input_file
         self.use_directory = use_directory
-        self.delete_file_regex = re.compile(delete_file_regex)
+        # self.delete_file_regex = re.compile(delete_file_regex)
+        self.delete_previous_result = delete_previous_result
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
         self.moved_files = 0
@@ -199,7 +202,7 @@ class SplitFilePlugin(WorkflowPlugin):
     def split_file(self, input_file_path: Path) -> None:
         """Split file"""
         split = Split(inputfile=str(input_file_path), outputdir=self.temp)
-        split.splitzerofill = 9
+        split.splitzerofill = SPLIT_ZERO_FILL
         if self.lines:
             split.bylinecount(
                 linecount=self.size,
@@ -232,54 +235,49 @@ class SplitFilePlugin(WorkflowPlugin):
         with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
             r.raise_for_status()
             if r.text == "":
-                if self.delete_file:
-                    setup_cmempy_user_access(self.context.user)
-                    delete_resource(self.context.task.project_id(), self.input_filename)
                 raise OSError("Input file is empty.")
             with file_path.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)
 
-    def execute_api(self) -> bool:
-        """Execute plugin using the API"""
-        file_path = Path(self.temp) / Path(self.input_filename).name
-        self.get_file(file_path)
-        if self.cancel_workflow():
-            return False
-        self.split_file(file_path)
-
-        for filename in self.split_filenames:
-            if self.cancel_workflow():
-                return False
-            with Path(filename).open("rb") as f:
-                buf = BytesIO(f.read())
-                setup_cmempy_user_access(self.context.user)
-                create_resource(
-                    project_name=self.context.task.project_id(),
-                    resource_name=str(Path(self.input_filename).parent / Path(filename).name),
-                    file_resource=buf,
-                    replace=True,
-                )
-                self.moved_files += 1
-
-        if self.delete_file:
-            setup_cmempy_user_access(self.context.user)
-            delete_resource(self.context.task.project_id(), self.input_filename)
-        return True
+    # def execute_api(self) -> bool:
+    #     """Execute plugin using the API"""
+    #     file_path = Path(self.temp) / Path(self.input_filename).name
+    #     self.get_file(file_path)
+    #     if self.cancel_workflow():
+    #         return False
+    #     self.split_file(file_path)
+    #
+    #     for filename in self.split_filenames:
+    #         if self.cancel_workflow():
+    #             return False
+    #         with Path(filename).open("rb") as f:
+    #             buf = BytesIO(f.read())
+    #             setup_cmempy_user_access(self.context.user)
+    #             create_resource(
+    #                 project_name=self.context.task.project_id(),
+    #                 resource_name=str(Path(self.input_filename).parent / Path(filename).name),
+    #                 file_resource=buf,
+    #                 replace=True,
+    #             )
+    #             self.moved_files += 1
+    #
+    #     if self.delete_input_file:
+    #         setup_cmempy_user_access(self.context.user)
+    #         delete_resource(self.context.task.project_id(), self.input_filename)
+    #     return True
 
     def execute_filesystem(self) -> bool:
         """Execute plugin using file system"""
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         input_file_path = resources_path / self.input_filename
         if input_file_path.stat().st_size == 0:
-            if self.delete_file:
+            if self.delete_input_file:
                 input_file_path.unlink()
             raise OSError("Input file is empty.")
 
-        self.split_file(input_file_path)
-
         if self.custom_target_directory:
-            target_path = Path(CUSTOM_TARGET_DIR)
+            target_path = Path(self.custom_target_directory)
         else:
             input_file_parent = Path(self.input_filename).parent
             target_path = resources_path
@@ -287,13 +285,25 @@ class SplitFilePlugin(WorkflowPlugin):
                 target_path /= input_file_parent
                 target_path.mkdir(exist_ok=True)
 
+        if self.delete_previous_result:
+            self.log.info("Removing files from previous result.")
+            stem = Path(self.input_filename).stem
+            suffix = Path(self.input_filename).suffix
+            fname_pattern = rf"{stem}_[0-9]{{{SPLIT_ZERO_FILL}}}{suffix}"
+            files = [f for f in target_path.iterdir() if re.match(fname_pattern, f.name)]
+            for f in files:
+                f.unlink(missing_ok=True)
+                self.log.info(f"File {f} deleted.")
+
+        self.split_file(input_file_path)
+
         for filename in self.split_filenames:
             if self.cancel_workflow():
                 return False
             move(Path(filename), target_path / Path(filename).name)
             self.moved_files += 1
 
-        if self.delete_file:
+        if self.delete_input_file:
             input_file_path.unlink()
         return True
 
@@ -308,17 +318,8 @@ class SplitFilePlugin(WorkflowPlugin):
             )
             return
 
-        if self.delete_file_regex:
-            files = [
-                f
-                for f in Path(CUSTOM_TARGET_DIR).iterdir()
-                if re.match(self.delete_file_regex, f.name)
-            ]
-            for f in files:
-                f.unlink(missing_ok=True)
-
         with TemporaryDirectory() as self.temp:
-            finished = self.execute_filesystem() if self.use_directory else self.execute_api()
+            finished = self.execute_filesystem()  # if self.use_directory else self.execute_api()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"
         if not finished:

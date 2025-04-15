@@ -14,12 +14,11 @@ from cmem.cmempy.workspace.projects.project import delete_project, make_new_proj
 from cmem.cmempy.workspace.projects.resources import get_resources
 from cmem.cmempy.workspace.projects.resources.resource import (
     create_resource,
-    delete_resource,
     get_resource,
 )
 from requests import HTTPError
 
-from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
+from cmem_plugin_splitfile.plugin_splitfile import SPLIT_ZERO_FILL, SplitFilePlugin
 from tests.utils import TestExecutionContext
 
 from . import __path__
@@ -27,10 +26,11 @@ from . import __path__
 UUID4 = "fc26980a17144b20ad8138d2493f0c2b"
 PROJECT_ID = f"project_{UUID4}"
 TEST_FILENAME = f"{UUID4}.nt"
+CUSTOM_DIR = Path(__path__[0]) / PROJECT_ID / "custom"
 
 
 @pytest.fixture
-def setup() -> Generator[None, Any, None]:
+def setup_filesystem() -> Generator[None, Any, None]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
@@ -39,33 +39,15 @@ def setup() -> Generator[None, Any, None]:
     (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
     copy(
         Path(__path__[0]) / "test_files" / TEST_FILENAME,
-        Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME,
+        Path(__path__[0]) / PROJECT_ID / "resources",
     )
     (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").open("w").close()
 
-    with (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).open("rb") as f:
-        create_resource(
-            project_name=PROJECT_ID,
-            resource_name=TEST_FILENAME,
-            file_resource=BytesIO(f.read()),
-            replace=True,
-        )
-    create_resource(
-        project_name=PROJECT_ID,
-        resource_name=f"empty_{TEST_FILENAME}",
-        file_resource=BytesIO(b""),
-        replace=True,
-    )
-
+    CUSTOM_DIR.mkdir(exist_ok=True)
     for n in range(2):
-        filename = f"{UUID4}_00000000{n + 1}.nt"
+        filename = f"{UUID4}_{'0' * (SPLIT_ZERO_FILL - 1)}{n + 1}.nt"
         (Path(__path__[0]) / PROJECT_ID / "resources" / filename).open("w").close()
-        create_resource(
-            project_name=PROJECT_ID,
-            resource_name=filename,
-            file_resource=BytesIO(b""),
-            replace=True,
-        )
+        (CUSTOM_DIR / filename).open("w").close()
 
     yield
 
@@ -73,7 +55,45 @@ def setup() -> Generator[None, Any, None]:
     delete_project(PROJECT_ID)
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.fixture
+def setup_api() -> Generator[None, Any, None]:
+    """Set up Validate test"""
+    with suppress(Exception):
+        delete_project(PROJECT_ID)
+    make_new_project(PROJECT_ID)
+
+    with (Path(__path__[0]) / "test_files" / TEST_FILENAME).open("rb") as f:
+        create_resource(
+            project_name=PROJECT_ID,
+            resource_name=TEST_FILENAME,
+            file_resource=f,
+            replace=True,
+        )
+    create_resource(
+        project_name=PROJECT_ID,
+        resource_name=f"empty_{TEST_FILENAME}",
+        file_resource=BytesIO(),
+        replace=True,
+    )
+
+    CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
+    for n in range(2):
+        filename = f"{UUID4}_{'0' * (SPLIT_ZERO_FILL - 1)}{n + 1}.nt"
+        create_resource(
+            project_name=PROJECT_ID,
+            resource_name=filename,
+            file_resource=BytesIO(),
+            replace=True,
+        )
+        (CUSTOM_DIR / filename).open("w").close()
+
+    yield
+
+    rmtree(Path(__path__[0]) / PROJECT_ID)
+    delete_project(PROJECT_ID)
+
+
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_size() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
@@ -94,7 +114,50 @@ def test_filesystem_size() -> None:
         raise OSError("Input file deleted.")
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
+def test_filesystem_size_custom_target() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        custom_target_directory=str(CUSTOM_DIR),
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        assert cmp(
+            CUSTOM_DIR / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
+        )
+
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
+        raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup_api")
+def test_api_size_custom_target() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+        custom_target_directory=str(CUSTOM_DIR),
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        assert cmp(
+            CUSTOM_DIR / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
+        )
+
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+
+
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_size_header() -> None:
     """Test split by size with header using file system"""
     SplitFilePlugin(
@@ -116,7 +179,7 @@ def test_filesystem_size_header() -> None:
         raise OSError("Input file deleted.")
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_api")
 def test_api_size() -> None:
     """Test split by size using API"""
     SplitFilePlugin(
@@ -139,7 +202,7 @@ def test_api_size() -> None:
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
     SplitFilePlugin(
@@ -161,7 +224,7 @@ def test_filesystem_size_delete() -> None:
         raise OSError("Input file not deleted.")
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_api")
 def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
     SplitFilePlugin(
@@ -186,7 +249,7 @@ def test_api_size_delete() -> None:
         get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_lines() -> None:
     """Test split by lines using file system"""
     SplitFilePlugin(
@@ -204,7 +267,7 @@ def test_filesystem_lines() -> None:
         )
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_lines_header() -> None:
     """Test split by lines with header using file system"""
     SplitFilePlugin(
@@ -223,7 +286,7 @@ def test_filesystem_lines_header() -> None:
         )
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_api")
 def test_api_empty_file() -> None:
     """Test split by size using API"""
     plugin = SplitFilePlugin(
@@ -238,7 +301,7 @@ def test_api_empty_file() -> None:
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_empty_file() -> None:
     """Test empty input file using file system"""
     plugin = SplitFilePlugin(
@@ -254,7 +317,7 @@ def test_filesystem_empty_file() -> None:
         raise OSError("Input file deleted.")
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
 def test_delete_previous_files_filesystem() -> None:
     """Test delete previous result using file system"""
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
@@ -274,7 +337,49 @@ def test_delete_previous_files_filesystem() -> None:
             raise OSError("File not deleted.")
 
 
-@pytest.mark.usefixtures("setup")
+@pytest.mark.usefixtures("setup_filesystem")
+def test_delete_previous_files_custom_target_filesystem() -> None:
+    """Test delete previous result using file system"""
+    resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        delete_previous_result=True,
+        custom_target_directory=str(CUSTOM_DIR),
+    )
+    plugin.context = TestExecutionContext(PROJECT_ID)
+    plugin.delete_previous_results(resources_path)
+
+    for n in range(2):
+        if (CUSTOM_DIR / f"{UUID4}_00000000{n + 1}.nt").is_file():
+            raise OSError("File not deleted.")
+
+
+@pytest.mark.usefixtures("setup_api")
+def test_delete_previous_files_custom_target_api() -> None:
+    """Test delete previous result using API"""
+    resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+        delete_previous_result=True,
+        custom_target_directory=str(CUSTOM_DIR),
+    )
+    plugin.context = TestExecutionContext(PROJECT_ID)
+    plugin.delete_previous_results(resources_path)
+
+    for n in range(2):
+        if (CUSTOM_DIR / f"{UUID4}_00000000{n + 1}.nt").is_file():
+            raise OSError("File not deleted.")
+
+
+@pytest.mark.usefixtures("setup_api")
 def test_delete_previous_files_api() -> None:
     """Test delete previous result using API"""
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"

@@ -266,7 +266,6 @@ class SplitFilePlugin(WorkflowPlugin):
             input_parent = input_path.parent
             if not self.custom_target_directory and str(input_parent) != ".":
                 target_path /= input_parent
-                target_path.mkdir(exist_ok=True)
             for f in target_path.glob("*"):
                 if re.match(fname_pattern, f.name):
                     f.unlink(missing_ok=True)
@@ -294,6 +293,7 @@ class SplitFilePlugin(WorkflowPlugin):
             input_parent = Path(self.input_filename).parent
             if not self.custom_target_directory and str(input_parent) != ".":
                 target_path /= input_parent
+                target_path.mkdir(exist_ok=True)
             move(Path(filename), target_path / target)
         else:
             with Path(filename).open("rb") as f:

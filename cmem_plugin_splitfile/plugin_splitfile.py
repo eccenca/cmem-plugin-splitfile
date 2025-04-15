@@ -222,24 +222,24 @@ class SplitFilePlugin(WorkflowPlugin):
         self.log.info(f"File {Path(file_path).name} generated ({file_size} bytes)")
         self.split_filenames.append(file_path)
 
-    def get_file(self, file_path: Path) -> None:
-        """Stream resource to temp folder"""
-        resource_url = get_resource_uri(
-            project_name=self.context.task.project_id(), resource_name=self.input_filename
-        )
-        setup_cmempy_user_access(self.context.user)
-        headers = {
-            "Authorization": f"Bearer {get_access_token()}",
-            "User-Agent": config.get_cmem_user_agent(),
-        }
-        with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
-            r.raise_for_status()
-            if r.text == "":
-                raise OSError("Input file is empty.")
-            with file_path.open("wb") as f:
-                for chunk in r.iter_content(chunk_size=10485760):
-                    f.write(chunk)
-
+    # def get_file(self, file_path: Path) -> None:
+    #     """Stream resource to temp folder"""
+    #     resource_url = get_resource_uri(
+    #         project_name=self.context.task.project_id(), resource_name=self.input_filename
+    #     )
+    #     setup_cmempy_user_access(self.context.user)
+    #     headers = {
+    #         "Authorization": f"Bearer {get_access_token()}",
+    #         "User-Agent": config.get_cmem_user_agent(),
+    #     }
+    #     with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
+    #         r.raise_for_status()
+    #         if r.text == "":
+    #             raise OSError("Input file is empty.")
+    #         with file_path.open("wb") as f:
+    #             for chunk in r.iter_content(chunk_size=10485760):
+    #                 f.write(chunk)
+    #
     # def execute_api(self) -> bool:
     #     """Execute plugin using the API"""
     #     file_path = Path(self.temp) / Path(self.input_filename).name
@@ -317,6 +317,7 @@ class SplitFilePlugin(WorkflowPlugin):
             return
 
         with TemporaryDirectory() as self.temp:
+
             finished = self.execute_filesystem()  # if self.use_directory else self.execute_api()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"

@@ -223,6 +223,8 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def execute_split(self) -> bool:
         """Execute plugin using file system"""
+        if not self.use_directory:
+            self.get_file_api()
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         input_file_path = self.get_input_path(resources_path)
 
@@ -345,9 +347,7 @@ class SplitFilePlugin(WorkflowPlugin):
             return
 
         with TemporaryDirectory() as self.temp:
-            if not self.use_directory:
-                self.get_file_api()
-            finished = self.execute_split()  # if self.use_directory else self.execute_api()
+            finished = self.execute_split()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"
         if not finished:

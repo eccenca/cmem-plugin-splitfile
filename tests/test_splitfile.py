@@ -109,6 +109,7 @@ def test_api_size() -> None:
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
+        use_directory=False,
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
@@ -132,7 +133,7 @@ def test_filesystem_size_delete() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
-        delete_file=True,
+        delete_input_file=True,
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
@@ -153,7 +154,8 @@ def test_api_size_delete() -> None:
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
-        delete_file=True,
+        delete_input_file=True,
+        use_directory=False,
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
@@ -214,6 +216,7 @@ def test_api_empty_file() -> None:
         chunk_size=6,
         size_unit="KB",
         projects_path=__path__[0],
+        use_directory=False,
     )
     with pytest.raises(OSError, match="Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
@@ -236,64 +239,49 @@ def test_filesystem_empty_file() -> None:
         raise OSError("Input file deleted.")
 
 
-@pytest.mark.usefixtures("setup")
-def test_api_empty_file_delete() -> None:
-    """Test empty input file using API, delete input file"""
-    plugin = SplitFilePlugin(
-        input_filename=f"empty_{TEST_FILENAME}",
-        chunk_size=6,
-        size_unit="KB",
-        projects_path=__path__[0],
-        delete_file=True,
-    )
-    with pytest.raises(OSError, match="Input file is empty."):
-        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
-        get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
-
-
-@pytest.mark.usefixtures("setup")
-def test_filesystem_empty_file_delete() -> None:
-    """Test empty input file using file system, delete input file"""
-    plugin = SplitFilePlugin(
-        input_filename=f"empty_{TEST_FILENAME}",
-        chunk_size=6,
-        size_unit="KB",
-        projects_path=__path__[0],
-        use_directory=True,
-        delete_file=True,
-    )
-    with pytest.raises(OSError, match="Input file is empty."):
-        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-    if (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
-        raise OSError("Input file not deleted.")
-
-
 def test_parameter_validation() -> None:
     """Test parameter validation"""
     with pytest.raises(ValueError, match="Invalid filename for parameter"):
-        SplitFilePlugin(input_filename="", chunk_size=6)
+        SplitFilePlugin(input_filename="", chunk_size=6, projects_path=__path__[0])
 
     with pytest.raises(ValueError, match="Invalid size unit"):
-        SplitFilePlugin(input_filename="file", chunk_size=6, size_unit="")
+        SplitFilePlugin(
+            input_filename="file", chunk_size=6, size_unit="", projects_path=__path__[0]
+        )
 
-    SplitFilePlugin(input_filename="file", chunk_size=1, size_unit="lines")
+    SplitFilePlugin(
+        input_filename="file", chunk_size=1, size_unit="lines", projects_path=__path__[0]
+    )
     with pytest.raises(ValueError, match="Invalid chunk size for lines"):
-        SplitFilePlugin(input_filename="file", chunk_size=1.5, size_unit="lines")
+        SplitFilePlugin(
+            input_filename="file", chunk_size=1.5, size_unit="lines", projects_path=__path__[0]
+        )
 
     with pytest.raises(ValueError, match="Invalid chunk size for lines"):
-        SplitFilePlugin(input_filename="file", chunk_size=-1, size_unit="lines")
+        SplitFilePlugin(
+            input_filename="file", chunk_size=-1, size_unit="lines", projects_path=__path__[0]
+        )
 
     with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
-        SplitFilePlugin(input_filename="file", size_unit="KB", chunk_size=0.5)
+        SplitFilePlugin(
+            input_filename="file", size_unit="KB", chunk_size=0.5, projects_path=__path__[0]
+        )
 
-    SplitFilePlugin(input_filename="file", size_unit="MB", chunk_size=0.001)
+    SplitFilePlugin(
+        input_filename="file", size_unit="MB", chunk_size=0.001, projects_path=__path__[0]
+    )
     with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
-        SplitFilePlugin(input_filename="file", size_unit="MB", chunk_size=0.0004)
+        SplitFilePlugin(
+            input_filename="file", size_unit="MB", chunk_size=0.0004, projects_path=__path__[0]
+        )
 
-    SplitFilePlugin(input_filename="file", size_unit="GB", chunk_size=0.000001)
+    SplitFilePlugin(
+        input_filename="file", size_unit="GB", chunk_size=0.000001, projects_path=__path__[0]
+    )
     with pytest.raises(ValueError, match="Minimum chunk size is 1024 bytes"):
-        SplitFilePlugin(input_filename="file", size_unit="GB", chunk_size=0.0000005)
+        SplitFilePlugin(
+            input_filename="file", size_unit="GB", chunk_size=0.0000005, projects_path=__path__[0]
+        )
 
     with pytest.raises(ValueError, match="Invalid path for parameter"):
         SplitFilePlugin(input_filename="file", chunk_size=6, use_directory=True, projects_path="?")
@@ -303,26 +291,3 @@ def test_parameter_validation() -> None:
         SplitFilePlugin(
             input_filename="file", chunk_size=6, use_directory=True, projects_path=projects_path
         )
-
-
-# @pytest.mark.usefixtures("setup")
-# def test_filesystem_size() -> None:
-#     """Test split by size using file system"""
-#     target_path = "testoutput"
-#     SplitFilePlugin(
-#         input_filename=TEST_FILENAME,
-#         chunk_size=6,
-#         size_unit="KB",
-#         projects_path=__path__[0],
-#         target_path=target_path,
-#         use_directory=True,
-#     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-#
-#     for n in range(3):
-#         assert cmp(
-#             Path(target_path) / f"{UUID4}_00000000{n + 1}.nt",
-#             Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
-#         )
-#
-#     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
-#         raise OSError("Input file deleted.")

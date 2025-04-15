@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 import requests
 from cmem.cmempy.api import config, get_access_token
+from cmem.cmempy.workspace.projects.resources import get_resources
 from cmem.cmempy.workspace.projects.resources.resource import (
     create_resource,
     delete_resource,
@@ -88,16 +89,16 @@ SPLIT_ZERO_FILL = 9
             label="Delete input file",
             description="Delete the input file after splitting.",
         ),
-        # PluginParameter(
-        #     param_type=BoolParameterType(),
-        #     name="use_directory",
-        #     label="Use internal projects directory",
-        #   description="""Use the internal projects directory of DataIntegration to fetch and store
-        #   files, instead of using the API. If enabled, the "Internal projects directory" parameter
-        #     has to be set. The split files will be stored in a subdirectory with the name of the
-        #     project identifier.""",
-        #     advanced=True,
-        # ),
+        PluginParameter(
+            param_type=BoolParameterType(),
+            name="use_directory",
+            label="Use internal projects directory",
+            description="""Use the internal projects directory of DataIntegration to fetch and store
+          files, instead of using the API. If enabled, the "Internal projects directory" parameter
+        has to be set. The split files will be stored in a subdirectory with the name of the
+        project identifier.""",
+            advanced=True,
+        ),
         PluginParameter(
             param_type=StringParameterType(),
             name="projects_path",
@@ -111,15 +112,15 @@ SPLIT_ZERO_FILL = 9
             name="custom_target_directory",
             label="Custom target directory",
             description="""If enabled the output files are written to this directory instead of the
-            project path.""",
+            project path. The directory needs to be accessible from DataImtegration""",
             advanced=True,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
             name="delete_previous_result",
             label="""Delete previous result.""",
-            description="""Delete previous result from splitting a file with the input filename from
-            the custom target directory.""",
+            description="""Delete the previous result from splitting a file with the input filename from
+            the target directory.""",
         ),
     ],
 )
@@ -133,7 +134,7 @@ class SplitFilePlugin(WorkflowPlugin):
         size_unit: str = SIZE_UNIT_MB,
         include_header: bool = False,
         delete_input_file: bool = False,
-        # use_directory: bool = True,
+        use_directory: bool = True,
         projects_path: str = DEFAULT_PROJECT_DIR,
         custom_target_directory: str = "",
         delete_previous_result: bool = False,
@@ -161,7 +162,6 @@ class SplitFilePlugin(WorkflowPlugin):
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
 
-        use_directory = True
         if use_directory:
             test_path = projects_path.removeprefix("/")
             if not is_valid_filepath(test_path):
@@ -185,7 +185,6 @@ class SplitFilePlugin(WorkflowPlugin):
         self.include_header = include_header
         self.delete_input_file = delete_input_file
         self.use_directory = use_directory
-        # self.delete_file_regex = re.compile(delete_file_regex)
         self.delete_previous_result = delete_previous_result
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
@@ -222,88 +221,119 @@ class SplitFilePlugin(WorkflowPlugin):
         self.log.info(f"File {Path(file_path).name} generated ({file_size} bytes)")
         self.split_filenames.append(file_path)
 
-    # def get_file(self, file_path: Path) -> None:
-    #     """Stream resource to temp folder"""
-    #     resource_url = get_resource_uri(
-    #         project_name=self.context.task.project_id(), resource_name=self.input_filename
-    #     )
-    #     setup_cmempy_user_access(self.context.user)
-    #     headers = {
-    #         "Authorization": f"Bearer {get_access_token()}",
-    #         "User-Agent": config.get_cmem_user_agent(),
-    #     }
-    #     with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
-    #         r.raise_for_status()
-    #         if r.text == "":
-    #             raise OSError("Input file is empty.")
-    #         with file_path.open("wb") as f:
-    #             for chunk in r.iter_content(chunk_size=10485760):
-    #                 f.write(chunk)
-    #
-    # def execute_api(self) -> bool:
-    #     """Execute plugin using the API"""
-    #     file_path = Path(self.temp) / Path(self.input_filename).name
-    #     self.get_file(file_path)
-    #     if self.cancel_workflow():
-    #         return False
-    #     self.split_file(file_path)
-    #
-    #     for filename in self.split_filenames:
-    #         if self.cancel_workflow():
-    #             return False
-    #         with Path(filename).open("rb") as f:
-    #             buf = BytesIO(f.read())
-    #             setup_cmempy_user_access(self.context.user)
-    #             create_resource(
-    #                 project_name=self.context.task.project_id(),
-    #                 resource_name=str(Path(self.input_filename).parent / Path(filename).name),
-    #                 file_resource=buf,
-    #                 replace=True,
-    #             )
-    #             self.moved_files += 1
-    #
-    #     if self.delete_input_file:
-    #         setup_cmempy_user_access(self.context.user)
-    #         delete_resource(self.context.task.project_id(), self.input_filename)
-    #     return True
-
-    def execute_filesystem(self) -> bool:
+    def execute_split(self) -> bool:
         """Execute plugin using file system"""
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
-        input_file_path = resources_path / self.input_filename
+        input_file_path = self.get_input_path(resources_path)
+
         if input_file_path.stat().st_size == 0:
             raise OSError("Input file is empty.")
 
-        if self.custom_target_directory:
-            target_path = Path(self.custom_target_directory)
-        else:
-            input_file_parent = Path(self.input_filename).parent
-            target_path = resources_path
-            if str(input_file_parent) != ".":
-                target_path /= input_file_parent
-                target_path.mkdir(exist_ok=True)
-
         if self.delete_previous_result:
-            self.log.info("Removing files from previous result.")
-            stem = Path(self.input_filename).stem
-            suffix = Path(self.input_filename).suffix
-            fname_pattern = rf"{stem}_[0-9]{{{SPLIT_ZERO_FILL}}}{suffix}"
-            files = [f for f in target_path.iterdir() if re.match(fname_pattern, f.name)]
-            for f in files:
-                f.unlink(missing_ok=True)
-                self.log.info(f"File {f} deleted.")
+            self.delete_previous_results(resources_path)
 
         self.split_file(input_file_path)
 
         for filename in self.split_filenames:
             if self.cancel_workflow():
                 return False
-            move(Path(filename), target_path / Path(filename).name)
+            self.move_or_upload_output_file(filename, resources_path)
             self.moved_files += 1
 
         if self.delete_input_file:
-            input_file_path.unlink()
+            self.delete_file(input_file_path)
+
         return True
+
+    def get_input_path(self, resources_path: Path) -> Path:
+        """Get input file path"""
+        if self.use_directory:
+            return resources_path / self.input_filename
+        return Path(self.temp) / Path(self.input_filename).name
+
+    def delete_previous_results(self, resources_path: Path) -> None:
+        """Delete previous results"""
+        self.log.info("Removing files from previous result.")
+
+        input_path = Path(self.input_filename)
+        fname_pattern = rf"{input_path.stem}_[0-9]{{{SPLIT_ZERO_FILL}}}{input_path.suffix}"
+
+        if self.use_directory or self.custom_target_directory:
+            target_path = (
+                Path(self.custom_target_directory)
+                if self.custom_target_directory
+                else resources_path
+            )
+            input_parent = input_path.parent
+            if not self.custom_target_directory and str(input_parent) != ".":
+                target_path /= input_parent
+                target_path.mkdir(exist_ok=True)
+
+            for f in target_path.glob("*"):
+                if re.match(fname_pattern, f.name):
+                    f.unlink(missing_ok=True)
+                    self.log.info(f"File {f} deleted.")
+        else:
+            setup_cmempy_user_access(self.context.user)
+            files = [
+                r["name"]
+                for r in get_resources(self.context.task.project_id())
+                if re.match(fname_pattern, r["name"])
+            ]
+            for f in files:
+                delete_resource(self.context.task.project_id(), f)
+                self.log.info(f"Resource {f} deleted.")
+
+    def move_or_upload_output_file(self, filename: str, resources_path: Path) -> None:
+        """Move or upload output file"""
+        target = Path(filename).name
+        if self.use_directory or self.custom_target_directory:
+            target_path = (
+                Path(self.custom_target_directory)
+                if self.custom_target_directory
+                else resources_path
+            )
+            input_parent = Path(self.input_filename).parent
+            if not self.custom_target_directory and str(input_parent) != ".":
+                target_path /= input_parent
+            move(Path(filename), target_path / target)
+        else:
+            with Path(filename).open("rb") as f:
+                buf = BytesIO(f.read())
+                setup_cmempy_user_access(self.context.user)
+                create_resource(
+                    project_name=self.context.task.project_id(),
+                    resource_name=str(Path(self.input_filename).parent / target),
+                    file_resource=buf,
+                    replace=True,
+                )
+
+    def delete_file(self, input_file_path: Path) -> None:
+        """Delete input file"""
+        if self.use_directory:
+            input_file_path.unlink()
+        else:
+            setup_cmempy_user_access(self.context.user)
+            delete_resource(self.context.task.project_id(), self.input_filename)
+
+    def get_file_api(self) -> None:
+        """Stream resource to temp folder using the API"""
+        file_path = Path(self.temp) / Path(self.input_filename).name
+        resource_url = get_resource_uri(
+            project_name=self.context.task.project_id(), resource_name=self.input_filename
+        )
+        setup_cmempy_user_access(self.context.user)
+        headers = {
+            "Authorization": f"Bearer {get_access_token()}",
+            "User-Agent": config.get_cmem_user_agent(),
+        }
+        with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
+            r.raise_for_status()
+            if r.text == "":
+                raise OSError("Input file is empty.")
+            with file_path.open("wb") as f:
+                for chunk in r.iter_content(chunk_size=10485760):
+                    f.write(chunk)
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
@@ -317,8 +347,9 @@ class SplitFilePlugin(WorkflowPlugin):
             return
 
         with TemporaryDirectory() as self.temp:
-
-            finished = self.execute_filesystem()  # if self.use_directory else self.execute_api()
+            if not self.use_directory:
+                self.get_file_api()
+            finished = self.execute_split()  # if self.use_directory else self.execute_api()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"
         if not finished:

@@ -11,7 +11,12 @@ from typing import Any
 
 import pytest
 from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
-from cmem.cmempy.workspace.projects.resources.resource import create_resource, get_resource
+from cmem.cmempy.workspace.projects.resources import get_resources
+from cmem.cmempy.workspace.projects.resources.resource import (
+    create_resource,
+    delete_resource,
+    get_resource,
+)
 from requests import HTTPError
 
 from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
@@ -51,6 +56,16 @@ def setup() -> Generator[None, Any, None]:
         file_resource=BytesIO(b""),
         replace=True,
     )
+
+    for n in range(2):
+        filename = f"{UUID4}_00000000{n + 1}.nt"
+        (Path(__path__[0]) / PROJECT_ID / "resources" / filename).open("w").close()
+        create_resource(
+            project_name=PROJECT_ID,
+            resource_name=filename,
+            file_resource=BytesIO(b""),
+            replace=True,
+        )
 
     yield
 
@@ -237,6 +252,46 @@ def test_filesystem_empty_file() -> None:
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
         raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup")
+def test_delete_previous_files_filesystem() -> None:
+    """Test delete previous result using file system"""
+    resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        delete_previous_result=True,
+    )
+    plugin.context = TestExecutionContext(PROJECT_ID)
+    plugin.delete_previous_results(resources_path)
+
+    for n in range(2):
+        if (Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt").is_file():
+            raise OSError("File not deleted.")
+
+
+@pytest.mark.usefixtures("setup")
+def test_delete_previous_files_api() -> None:
+    """Test delete previous result using API"""
+    resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=6,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+        delete_previous_result=True,
+    )
+    plugin.context = TestExecutionContext(PROJECT_ID)
+    plugin.delete_previous_results(resources_path)
+    resources = [r["name"] for r in get_resources(PROJECT_ID)]
+    for n in range(2):
+        if f"{UUID4}_00000000{n + 1}.nt" in resources:
+            raise OSError("File not deleted.")
 
 
 def test_parameter_validation() -> None:

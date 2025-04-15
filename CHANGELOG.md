@@ -9,13 +9,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Added
 
+- Option to write result to custom target directory in DataIntegration
+- Option to delete result from previous split of an input file with the same filename
 - Validate size unit parameter.
+
+### Changed
+
+- Do not delete input file on "Input file is empty" if "Delete input file" parameter is set.
 
 ## [1.0.3] 2025-02-11
 
 ### Changed
 
-- Do not delete input file on "Input file is empty" error if "Delete input file" parameter is not set.
+- Do not delete input file on "Input file is empty" if "Delete input file" parameter is not set.
 
 
 ## [1.0.2] 2025-02-11

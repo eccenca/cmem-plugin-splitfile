@@ -112,15 +112,15 @@ SPLIT_ZERO_FILL = 9
             name="custom_target_directory",
             label="Custom target directory",
             description="""If enabled the output files are written to this directory instead of the
-            project path. The directory needs to be accessible from DataImtegration""",
+            project path. The directory needs to be accessible from DataIntegration.""",
             advanced=True,
         ),
         PluginParameter(
             param_type=BoolParameterType(),
             name="delete_previous_result",
             label="""Delete previous result.""",
-            description="""Delete the previous result from splitting a file with the input filename from
-            the target directory.""",
+            description="""Delete the previous result from splitting a file with the input filename
+            from the target directory.""",
         ),
     ],
 )
@@ -254,7 +254,6 @@ class SplitFilePlugin(WorkflowPlugin):
     def delete_previous_results(self, resources_path: Path) -> None:
         """Delete previous results"""
         self.log.info("Removing files from previous result.")
-
         input_path = Path(self.input_filename)
         fname_pattern = rf"{input_path.stem}_[0-9]{{{SPLIT_ZERO_FILL}}}{input_path.suffix}"
 
@@ -268,7 +267,6 @@ class SplitFilePlugin(WorkflowPlugin):
             if not self.custom_target_directory and str(input_parent) != ".":
                 target_path /= input_parent
                 target_path.mkdir(exist_ok=True)
-
             for f in target_path.glob("*"):
                 if re.match(fname_pattern, f.name):
                     f.unlink(missing_ok=True)

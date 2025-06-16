@@ -33,6 +33,7 @@ from pathvalidate import is_valid_filepath
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
 from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
+from cmem_plugin_splitfile.split_by_grouped_prefix import SplitGroupedPrefix
 
 DEFAULT_PROJECT_DIR = "/data/datalake"
 SIZE_UNIT_KB = "kb"
@@ -91,6 +92,14 @@ SPLIT_ZERO_FILL = 9
         ),
         PluginParameter(
             param_type=BoolParameterType(),
+            name="group_prefix",
+            label="Group lines with the same prefix (word) in one file.",
+            description="""Group lines with the same prefix (word) in one file. This assumes a
+            sorted input file, and does not support headers or a number of lines for the split
+            file size.""",
+        ),
+        PluginParameter(
+            param_type=BoolParameterType(),
             name="use_directory",
             label="Use internal projects directory",
             description="""Use the internal projects directory of DataIntegration to fetch and store
@@ -132,6 +141,7 @@ class SplitFilePlugin(WorkflowPlugin):
         input_filename: str,
         chunk_size: float,
         size_unit: str = SIZE_UNIT_MB,
+        group_prefix: bool = False,
         include_header: bool = False,
         delete_input_file: bool = False,
         use_directory: bool = True,
@@ -159,8 +169,13 @@ class SplitFilePlugin(WorkflowPlugin):
         if self.lines:
             if int(chunk_size) != chunk_size or chunk_size < 1:
                 errors += "Invalid chunk size for lines. "
+            if group_prefix:
+                errors += "Grouping lines with the same prefix does ot support size unit 'lines'."
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
+
+        if group_prefix and include_header:
+            errors += "Grouping lines with the same prefix does not support 'headers'."
 
         if use_directory:
             test_path = projects_path.removeprefix("/")
@@ -180,6 +195,7 @@ class SplitFilePlugin(WorkflowPlugin):
 
         self.input_filename = input_filename
         self.size = int(chunk_size)
+        self.group_prefix = group_prefix
         self.projects_path = Path(projects_path)
         self.custom_target_directory = custom_target_directory
         self.include_header = include_header
@@ -200,21 +216,26 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def split_file(self, input_file_path: Path) -> None:
         """Split file"""
-        split = Split(inputfile=str(input_file_path), outputdir=self.temp)
-        split.splitzerofill = SPLIT_ZERO_FILL
-        if self.lines:
-            split.bylinecount(
-                linecount=self.size,
-                includeheader=self.include_header,
-                callback=self.split_callback,
-            )
+        if not self.group_prefix:
+            split = Split(inputfile=str(input_file_path), outputdir=self.temp)
+            split.splitzerofill = SPLIT_ZERO_FILL
+            if self.lines:
+                split.bylinecount(
+                    linecount=self.size,
+                    includeheader=self.include_header,
+                    callback=self.split_callback,
+                )
+            else:
+                split.bysize(
+                    size=self.size,
+                    newline=True,
+                    includeheader=self.include_header,
+                    callback=self.split_callback,
+                )
         else:
-            split.bysize(
-                size=self.size,
-                newline=True,
-                includeheader=self.include_header,
-                callback=self.split_callback,
-            )
+            split = SplitGroupedPrefix(inputfile=str(input_file_path), outputdir=self.temp)
+            split.splitzerofill = SPLIT_ZERO_FILL
+            split.bygroupedprefix(maxsize=self.size, callback=self.split_callback)
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""

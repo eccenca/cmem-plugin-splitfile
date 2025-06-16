@@ -16,10 +16,10 @@ from cmem.cmempy.workspace.projects.resources.resource import (
     create_resource,
     get_resource,
 )
+from cmem_plugin_base.testing import TestExecutionContext
 from requests import HTTPError
 
 from cmem_plugin_splitfile.plugin_splitfile import SPLIT_ZERO_FILL, SplitFilePlugin
-from tests.utils import TestExecutionContext
 
 from . import __path__
 

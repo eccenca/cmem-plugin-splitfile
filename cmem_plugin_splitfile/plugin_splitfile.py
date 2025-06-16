@@ -136,7 +136,7 @@ SPLIT_ZERO_FILL = 9
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0912 PLR0913
+    def __init__(  # noqa: C901 PLR0912 PLR0913 PLR0915
         self,
         input_filename: str,
         chunk_size: float,

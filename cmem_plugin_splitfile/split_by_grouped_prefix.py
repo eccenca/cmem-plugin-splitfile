@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """based on:
 Author: rjayapalan
 Created: March 05, 2022
@@ -72,7 +71,7 @@ class SplitGroupedPrefix:
 
     @property
     def outputdir(self) -> str:
-        """Returns output dir path
+        """Return output dir path
 
         Returns:
             str: Output dir path
@@ -82,7 +81,7 @@ class SplitGroupedPrefix:
 
     @property
     def splitdelimiter(self) -> str:
-        """Returns split file suffix char
+        """Return split file suffix char
 
         Returns:
             str: Split file suffix char
@@ -92,7 +91,7 @@ class SplitGroupedPrefix:
 
     @property
     def splitzerofill(self) -> int:
-        """Returns split file's number of zero fill digits
+        """Return split file's number of zero fill digits
 
         Returns:
             int: Split file's number of zero fill digits
@@ -102,7 +101,7 @@ class SplitGroupedPrefix:
 
     @property
     def manfilename(self) -> str:
-        """Returns manifest filename
+        """Return manifest filename
 
         Returns:
             str: Manifest filename
@@ -112,8 +111,7 @@ class SplitGroupedPrefix:
 
     @terminate.setter
     def terminate(self, value: bool) -> None:
-        """Sets terminate flag. Once flag is set
-        the running process will safely terminate.
+        """Set terminate flag. Once flag is set the running process will safely terminate.
 
         Args:
             value (bool): True/False
@@ -123,7 +121,7 @@ class SplitGroupedPrefix:
 
     @splitdelimiter.setter
     def splitdelimiter(self, value: str) -> None:
-        """Sets split file suffix char
+        """Set split file suffix char
 
         Args:
             value (str): Any character
@@ -133,7 +131,7 @@ class SplitGroupedPrefix:
 
     @splitzerofill.setter
     def splitzerofill(self, value: int) -> None:
-        """Sets split file's number of zero fill digits
+        """Set split file's number of zero fill digits
 
         Args:
             value (int): Any whole number
@@ -147,7 +145,7 @@ class SplitGroupedPrefix:
 
     @manfilename.setter
     def manfilename(self, value: str) -> None:
-        """Sets manifest filename
+        """Set manifest filename
 
         Args:
             value (str): Manifest filename
@@ -157,7 +155,7 @@ class SplitGroupedPrefix:
 
     @staticmethod
     def _getreadbuffersize(splitsize: int) -> int:
-        """Returns buffer size to be used with the file reader
+        """Return buffer size to be used with the file reader
 
         Args:
             splitsize (int): Split size
@@ -172,7 +170,7 @@ class SplitGroupedPrefix:
         return defaultchunksize
 
     def _getnextsplit(self, splitnum: int) -> str:
-        """Returns next split filename
+        """Return next split filename
 
         Args:
             splitnum (int): Next split number
@@ -185,10 +183,10 @@ class SplitGroupedPrefix:
         fname, ext = ntpath.splitext(filename)
         zsplitnum = format(splitnum, "0" + str(self.splitzerofill))
         splitfilename = f"{fname}{self.splitdelimiter}{zsplitnum}{ext}"
-        return splitfilename
+        return splitfilename  # noqa: RET504
 
     def _getmanifestpath(self) -> str:
-        """Returns manifest filepath
+        """Return manifest filepath
 
         Returns:
             str: Manifest filepath
@@ -202,7 +200,7 @@ class SplitGroupedPrefix:
         runtime = int((endtime - self._starttime) / 60)
         log.info(f"Process completed in {runtime} min(s)")
 
-    def bygroupedprefix(self, maxsize: int, callback: Callable = None) -> None:  # noqa: RUF013
+    def bygroupedprefix(self, maxsize: int, callback: Callable = None) -> None:  # noqa: RUF013 PLR0915 C901
         """Split file by groups of lines that start with the same first word (prefix), ensuring
         each group stays in a single file and total split size doesn't exceed maxsize.
 

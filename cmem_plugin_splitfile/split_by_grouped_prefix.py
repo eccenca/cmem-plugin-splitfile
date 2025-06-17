@@ -1,7 +1,4 @@
-"""based on:
-Author: rjayapalan
-Created: March 05, 2022
-"""
+"""based on: https://pypi.org/project/filesplit/4.1.0/"""
 
 import csv
 import logging
@@ -21,13 +18,15 @@ MAX_ZERO_FILL = 10
 MANIFEST_FILE_NAME = "manifest"
 
 
-class ZeroFillOutOfRange(Exception):
-    pass
+class ZeroFillOutOfRange(Exception):  # noqa: N818
+    """Zero-fill out of range exception"""
 
 
 class SplitGroupedPrefix:
+    """Split ordered file and group lines with the same prefix (first word)"""
+
     def __init__(self, inputfile: str, outputdir: str) -> None:
-        """Constructor
+        """Construct
 
         Args:
             inputfile (str): Path to the original file
@@ -194,15 +193,16 @@ class SplitGroupedPrefix:
         """
         return str(Path(self.outputdir) / self.manfilename)
 
-    def _endprocess(self):
-        """Runs statements that marks the completion of the process"""
+    def _endprocess(self) -> None:
+        """Run statements that marks the completion of the process"""
         endtime = time.time()
         runtime = int((endtime - self._starttime) / 60)
         log.info(f"Process completed in {runtime} min(s)")
 
     def bygroupedprefix(self, maxsize: int, callback: Callable = None) -> None:  # noqa: RUF013 PLR0915 C901
-        """Split file by groups of lines that start with the same first word (prefix), ensuring
-        each group stays in a single file and total split size doesn't exceed maxsize.
+        """Split file by groups of lines that start with the same first word (prefix)
+
+        Ensures each group stays in a single file and total split size doesn't exceed maxsize.
 
         Args:
             maxsize (int): Maximum file size in bytes for each split

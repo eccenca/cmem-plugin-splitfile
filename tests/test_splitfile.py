@@ -98,7 +98,7 @@ def test_filesystem_size() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -119,7 +119,7 @@ def test_filesystem_size_custom_target() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -141,7 +141,7 @@ def test_api_size_custom_target() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
@@ -162,7 +162,7 @@ def test_filesystem_size_header() -> None:
     """Test split by size with header using file system"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         include_header=True,
         projects_path=__path__[0],
@@ -184,7 +184,7 @@ def test_api_size() -> None:
     """Test split by size using API"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
@@ -207,7 +207,7 @@ def test_filesystem_size_delete() -> None:
     """Test split by size using file system and delete input file"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -229,7 +229,7 @@ def test_api_size_delete() -> None:
     """Test split by size using API and delete input file"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         delete_input_file=True,
@@ -286,12 +286,34 @@ def test_filesystem_lines_header() -> None:
         )
 
 
+@pytest.mark.usefixtures("setup_filesystem")
+def test_group_prefix() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        group_prefix=True,
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 1}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_group_00000000{n + 1}.nt",
+        )
+
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
+        raise OSError("Input file deleted.")
+
+
 @pytest.mark.usefixtures("setup_api")
 def test_api_empty_file() -> None:
     """Test split by size using API"""
     plugin = SplitFilePlugin(
         input_filename=f"empty_{TEST_FILENAME}",
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
@@ -306,7 +328,7 @@ def test_filesystem_empty_file() -> None:
     """Test empty input file using file system"""
     plugin = SplitFilePlugin(
         input_filename=f"empty_{TEST_FILENAME}",
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -323,7 +345,7 @@ def test_delete_previous_files_filesystem() -> None:
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -343,7 +365,7 @@ def test_delete_previous_files_custom_target_filesystem() -> None:
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
@@ -364,7 +386,7 @@ def test_delete_previous_files_custom_target_api() -> None:
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
@@ -385,7 +407,7 @@ def test_delete_previous_files_api() -> None:
     resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
-        chunk_size=6,
+        chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
@@ -402,11 +424,11 @@ def test_delete_previous_files_api() -> None:
 def test_parameter_validation() -> None:
     """Test parameter validation"""
     with pytest.raises(ValueError, match="Invalid filename for parameter"):
-        SplitFilePlugin(input_filename="", chunk_size=6, projects_path=__path__[0])
+        SplitFilePlugin(input_filename="", chunk_size=3, projects_path=__path__[0])
 
     with pytest.raises(ValueError, match="Invalid size unit"):
         SplitFilePlugin(
-            input_filename="file", chunk_size=6, size_unit="", projects_path=__path__[0]
+            input_filename="file", chunk_size=3, size_unit="", projects_path=__path__[0]
         )
 
     SplitFilePlugin(
@@ -444,10 +466,52 @@ def test_parameter_validation() -> None:
         )
 
     with pytest.raises(ValueError, match="Invalid path for parameter"):
-        SplitFilePlugin(input_filename="file", chunk_size=6, use_directory=True, projects_path="?")
+        SplitFilePlugin(input_filename="file", chunk_size=3, use_directory=True, projects_path="?")
 
     projects_path = token_hex(8)
     with pytest.raises(ValueError, match=f"Directory {projects_path} does not exist"):
         SplitFilePlugin(
-            input_filename="file", chunk_size=6, use_directory=True, projects_path=projects_path
+            input_filename="file", chunk_size=3, use_directory=True, projects_path=projects_path
         )
+
+    with pytest.raises(
+        ValueError, match="Grouping lines with the same prefix does ot support size unit 'lines'."
+    ):
+        SplitFilePlugin(
+            input_filename="file",
+            chunk_size=3,
+            size_unit="lines",
+            use_directory=True,
+            projects_path=projects_path,
+            group_prefix=True,
+        )
+
+    with pytest.raises(
+        ValueError, match="Grouping lines with the same prefix does not support 'headers'."
+    ):
+        SplitFilePlugin(
+            input_filename="file",
+            chunk_size=3,
+            include_header=True,
+            use_directory=True,
+            projects_path=projects_path,
+            group_prefix=True,
+        )
+
+
+@pytest.mark.usefixtures("setup_filesystem")
+def test_group_prefix_size_error() -> None:
+    """Test split by size using file system"""
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=1,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        group_prefix=True,
+    )
+
+    with pytest.raises(
+        ValueError, match="Group with prefix '<http://example.org/subject1>' exceeds max file size."
+    ):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))

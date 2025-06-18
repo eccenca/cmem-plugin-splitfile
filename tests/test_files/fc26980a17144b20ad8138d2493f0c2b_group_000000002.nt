@@ -1,4 +1,3 @@
-<http://example.org/subject1> <http://example.org/predicate> "Object 1" .
 <http://example.org/subject2> <http://example.org/predicate> "Object 41" .
 <http://example.org/subject2> <http://example.org/predicate> "Object 42" .
 <http://example.org/subject2> <http://example.org/predicate> "Object 43" .
@@ -24,17 +23,3 @@
 <http://example.org/subject2> <http://example.org/predicate> "Object 63" .
 <http://example.org/subject2> <http://example.org/predicate> "Object 64" .
 <http://example.org/subject2> <http://example.org/predicate> "Object 65" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 66" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 67" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 68" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 69" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 70" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 71" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 72" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 73" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 74" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 75" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 76" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 77" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 78" .
-<http://example.org/subject3> <http://example.org/predicate> "Object 79" .

@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - Option to write result to custom target directory in DataIntegration
 - Option to delete result from previous split of an input file with the same filename
+- Option to group lines with the same prefix in the same file when processing sorted input
 - Validate size unit parameter.
 
 ### Changed

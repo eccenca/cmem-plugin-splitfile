@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,16 @@ class SplitGroupedPrefix:
         """
         return self._terminate
 
+    @terminate.setter
+    def terminate(self, value: bool) -> None:
+        """Set terminate flag. Once flag is set the running process will safely terminate.
+
+        Args:
+            value (bool): True/False
+
+        """
+        self._terminate = value
+
     @property
     def inputfile(self) -> str:
         """Returns input file path
@@ -88,36 +99,6 @@ class SplitGroupedPrefix:
         """
         return self._splitdelimiter
 
-    @property
-    def splitzerofill(self) -> int:
-        """Return split file's number of zero fill digits
-
-        Returns:
-            int: Split file's number of zero fill digits
-
-        """
-        return self._splitzerofill
-
-    @property
-    def manfilename(self) -> str:
-        """Return manifest filename
-
-        Returns:
-            str: Manifest filename
-
-        """
-        return self._manfilename
-
-    @terminate.setter
-    def terminate(self, value: bool) -> None:
-        """Set terminate flag. Once flag is set the running process will safely terminate.
-
-        Args:
-            value (bool): True/False
-
-        """
-        self._terminate = value
-
     @splitdelimiter.setter
     def splitdelimiter(self, value: str) -> None:
         """Set split file suffix char
@@ -127,6 +108,16 @@ class SplitGroupedPrefix:
 
         """
         self._splitdelimiter = value
+
+    @property
+    def splitzerofill(self) -> int:
+        """Return split file's number of zero fill digits
+
+        Returns:
+            int: Split file's number of zero fill digits
+
+        """
+        return self._splitzerofill
 
     @splitzerofill.setter
     def splitzerofill(self, value: int) -> None:
@@ -141,6 +132,16 @@ class SplitGroupedPrefix:
                 f"Zero fill must be between {MIN_ZERO_FILL} and {MAX_ZERO_FILL}."
             )
         self._splitzerofill = value
+
+    @property
+    def manfilename(self) -> str:
+        """Return manifest filename
+
+        Returns:
+            str: Manifest filename
+
+        """
+        return self._manfilename
 
     @manfilename.setter
     def manfilename(self, value: str) -> None:
@@ -199,7 +200,9 @@ class SplitGroupedPrefix:
         runtime = int((endtime - self._starttime) / 60)
         log.info(f"Process completed in {runtime} min(s)")
 
-    def bygroupedprefix(self, maxsize: int, callback: Callable = None) -> None:  # noqa: RUF013 PLR0915 C901
+    def bygroupedprefix(  # noqa: C901 PLR0915
+        self, maxsize: int, callback: Callable[[str, int], Any] | None = None
+    ) -> None:
         """Split file by groups of lines that start with the same first word (prefix)
 
         Ensures each group stays in a single file and total split size doesn't exceed maxsize.
@@ -221,10 +224,9 @@ class SplitGroupedPrefix:
                 splitnum = 1
                 current_chunk = BytesIO()
                 current_size = 0
-                current_file_path = ""
 
                 def write_current_chunk() -> None:
-                    nonlocal splitnum, current_chunk, current_size, current_file_path
+                    nonlocal splitnum, current_chunk, current_size
                     if current_chunk.tell() == 0:
                         return  # Nothing to write
                     current_file_path = Path(self.outputdir) / self._getnextsplit(splitnum)
@@ -239,7 +241,7 @@ class SplitGroupedPrefix:
                         }
                     )
                     if callback:
-                        callback(current_file_path, splitsize)
+                        callback(str(current_file_path), splitsize)
                     splitnum += 1
                     current_chunk = BytesIO()
                     current_size = 0

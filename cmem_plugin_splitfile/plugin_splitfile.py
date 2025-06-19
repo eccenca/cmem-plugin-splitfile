@@ -217,28 +217,30 @@ class SplitFilePlugin(WorkflowPlugin):
     def split_file(self, input_file_path: Path) -> None:
         """Split file"""
         if not self.group_prefix:
-            split = Split(inputfile=str(input_file_path), outputdir=self.temp)
-            split.splitzerofill = SPLIT_ZERO_FILL
+            self.split = Split(inputfile=str(input_file_path), outputdir=self.temp)
+            self.split.splitzerofill = SPLIT_ZERO_FILL
             if self.lines:
-                split.bylinecount(
+                self.split.bylinecount(
                     linecount=self.size,
                     includeheader=self.include_header,
                     callback=self.split_callback,
                 )
             else:
-                split.bysize(
+                self.split.bysize(
                     size=self.size,
                     newline=True,
                     includeheader=self.include_header,
                     callback=self.split_callback,
                 )
         else:
-            split = SplitGroupedPrefix(inputfile=str(input_file_path), outputdir=self.temp)
-            split.splitzerofill = SPLIT_ZERO_FILL
-            split.bygroupedprefix(maxsize=self.size, callback=self.split_callback)
+            self.split = SplitGroupedPrefix(inputfile=str(input_file_path), outputdir=self.temp)
+            self.split.splitzerofill = SPLIT_ZERO_FILL
+            self.split.bygroupedprefix(maxsize=self.size, callback=self.split_callback)
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""
+        if self.cancel_workflow():
+            self.split.terminate = True
         self.log.info(f"File {Path(file_path).name} generated ({file_size} bytes)")
         self.split_filenames.append(file_path)
 

@@ -17,10 +17,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Changed
 
 - Do not delete input file on "Input file is empty" if "Delete input file" parameter is set.
+- Better process termination when cancelling workflow
 
 ## [1.0.3] 2025-02-11
 
-### Changed
+### Fixed
 
 - Do not delete input file on "Input file is empty" if "Delete input file" parameter is not set.
 

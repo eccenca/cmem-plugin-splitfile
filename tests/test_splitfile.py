@@ -63,6 +63,9 @@ def setup_api() -> Generator[None, Any, None]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
+    with suppress(Exception):
+        rmtree(Path(__path__[0]) / PROJECT_ID)
+
     make_new_project(PROJECT_ID)
 
     with (Path(__path__[0]) / "test_files" / TEST_FILENAME).open("rb") as f:
@@ -92,6 +95,7 @@ def setup_api() -> Generator[None, Any, None]:
 
     yield
 
+    rmtree(Path(__path__[0]) / PROJECT_ID)
     delete_project(PROJECT_ID)
 
 

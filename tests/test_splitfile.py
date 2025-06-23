@@ -34,6 +34,9 @@ def setup_filesystem() -> Generator[None, Any, None]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
+    with suppress(Exception):
+        rmtree(Path(__path__[0]) / PROJECT_ID)
+
     make_new_project(PROJECT_ID)
 
     (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
@@ -89,7 +92,18 @@ def setup_api() -> Generator[None, Any, None]:
 
     yield
 
-    rmtree(Path(__path__[0]) / PROJECT_ID)
+    delete_project(PROJECT_ID)
+
+
+@pytest.fixture
+def setup_no_file() -> Generator[None, Any, None]:
+    """Set up Validate test"""
+    with suppress(Exception):
+        delete_project(PROJECT_ID)
+    make_new_project(PROJECT_ID)
+
+    yield
+
     delete_project(PROJECT_ID)
 
 
@@ -220,8 +234,8 @@ def test_filesystem_size_delete() -> None:
             Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt",
         )
 
-    if (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
-        raise OSError("Input file not deleted.")
+    if (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).exists():
+        raise FileExistsError("Input file not deleted.")
 
 
 @pytest.mark.usefixtures("setup_api")
@@ -311,14 +325,15 @@ def test_group_prefix() -> None:
 @pytest.mark.usefixtures("setup_api")
 def test_api_empty_file() -> None:
     """Test split by size using API"""
+    input_file = f"empty_{TEST_FILENAME}"
     plugin = SplitFilePlugin(
-        input_filename=f"empty_{TEST_FILENAME}",
+        input_filename=input_file,
         chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=f'Input file "{input_file}" is empty.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
@@ -326,14 +341,15 @@ def test_api_empty_file() -> None:
 @pytest.mark.usefixtures("setup_filesystem")
 def test_filesystem_empty_file() -> None:
     """Test empty input file using file system"""
+    input_file = f"empty_{TEST_FILENAME}"
     plugin = SplitFilePlugin(
-        input_filename=f"empty_{TEST_FILENAME}",
+        input_filename=input_file,
         chunk_size=3,
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=f'Input file "{input_file}" is empty.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
         raise OSError("Input file deleted.")
@@ -514,4 +530,32 @@ def test_group_prefix_size_error() -> None:
     with pytest.raises(
         ValueError, match="Group with prefix '<http://example.org/subject1>' exceeds max file size."
     ):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+
+@pytest.mark.usefixtures("setup_no_file")
+def test_api_no_file() -> None:
+    """Test empty input file using file system"""
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+    )
+    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
+        plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+
+@pytest.mark.usefixtures("setup_no_file")
+def test_filesystem_no_file() -> None:
+    """Test empty input file using file system"""
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+    )
+    with pytest.raises(FileNotFoundError, match=f'Input file "{TEST_FILENAME}" not found.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))

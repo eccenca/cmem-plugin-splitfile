@@ -251,8 +251,11 @@ class SplitFilePlugin(WorkflowPlugin):
         resources_path = self.projects_path / self.context.task.project_id() / "resources"
         input_file_path = self.get_input_path(resources_path)
 
+        if not input_file_path.exists():
+            raise FileNotFoundError(f'Input file "{self.input_filename}" not found.')
+
         if input_file_path.stat().st_size == 0:
-            raise OSError("Input file is empty.")
+            raise OSError(f'Input file "{self.input_filename}" is empty.')
 
         if self.delete_previous_result:
             self.delete_previous_results(resources_path)
@@ -353,7 +356,7 @@ class SplitFilePlugin(WorkflowPlugin):
         with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
             r.raise_for_status()
             if r.text == "":
-                raise OSError("Input file is empty.")
+                raise OSError(f'Input file "{self.input_filename}" is empty.')
             with file_path.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)

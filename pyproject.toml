@@ -19,7 +19,6 @@ filesplit = "^4.1.0"
 pathvalidate = "^3.3.1"
 cmem-cmempy = "^25.1.0"
 requests = "^2.32.4"
-types-requests = "^2.32.4.20250611"
 
 [tool.poetry.dependencies.cmem-plugin-base]
 version = "^4.10"

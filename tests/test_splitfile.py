@@ -5,17 +5,13 @@ from contextlib import suppress
 from filecmp import cmp
 from io import BytesIO
 from pathlib import Path
-from secrets import token_hex
 from shutil import copy, rmtree
 from typing import Any
 
 import pytest
 from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
 from cmem.cmempy.workspace.projects.resources import get_resources
-from cmem.cmempy.workspace.projects.resources.resource import (
-    create_resource,
-    get_resource,
-)
+from cmem.cmempy.workspace.projects.resources.resource import create_resource, get_resource
 from cmem_plugin_base.testing import TestExecutionContext
 from requests import HTTPError
 
@@ -488,7 +484,7 @@ def test_parameter_validation() -> None:
     with pytest.raises(ValueError, match="Invalid path for parameter"):
         SplitFilePlugin(input_filename="file", chunk_size=3, use_directory=True, projects_path="?")
 
-    projects_path = token_hex(8)
+    projects_path = UUID4  # token_hex(8)
     with pytest.raises(ValueError, match=f"Directory {projects_path} does not exist"):
         SplitFilePlugin(
             input_filename="file", chunk_size=3, use_directory=True, projects_path=projects_path

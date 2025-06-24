@@ -20,6 +20,7 @@ from cmem_plugin_base.dataintegration.context import ExecutionContext, Execution
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
+from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs
 from cmem_plugin_base.dataintegration.types import (
@@ -32,7 +33,6 @@ from filesplit.split import Split
 from pathvalidate import is_valid_filepath
 
 from cmem_plugin_splitfile.doc import SPLITFILE_DOC
-from cmem_plugin_splitfile.resource_parameter_type import ResourceParameterType
 from cmem_plugin_splitfile.split_by_grouped_prefix import SplitGroupedPrefix
 
 DEFAULT_PROJECT_DIR = "/data/datalake"
@@ -93,10 +93,10 @@ SPLIT_ZERO_FILL = 9
         PluginParameter(
             param_type=BoolParameterType(),
             name="group_prefix",
-            label="Group lines with the same prefix (word) in one file.",
-            description="""Group lines with the same prefix (word) in one file. This assumes a
+            label="Group lines with the same prefix in one file.",
+            description="""Group lines with the same prefix in one file. This assumes a
             sorted input file, and does not support headers or a number of lines for the split
-            file size.""",
+            file size. The prefix is the first item when a line is split at whitespaces.""",
         ),
         PluginParameter(
             param_type=BoolParameterType(),

@@ -484,14 +484,14 @@ def test_parameter_validation() -> None:
     with pytest.raises(ValueError, match="Invalid path for parameter"):
         SplitFilePlugin(input_filename="file", chunk_size=3, use_directory=True, projects_path="?")
 
-    projects_path = UUID4  # token_hex(8)
+    projects_path = UUID4
     with pytest.raises(ValueError, match=f"Directory {projects_path} does not exist"):
         SplitFilePlugin(
             input_filename="file", chunk_size=3, use_directory=True, projects_path=projects_path
         )
 
     with pytest.raises(
-        ValueError, match="Grouping lines with the same prefix does ot support size unit 'lines'."
+        ValueError, match='Grouping lines with the same prefix does not support size unit "lines".'
     ):
         SplitFilePlugin(
             input_filename="file",
@@ -528,7 +528,7 @@ def test_group_prefix_size_error() -> None:
     )
 
     with pytest.raises(
-        ValueError, match="Group with prefix '<http://example.org/subject1>' exceeds max file size."
+        ValueError, match='Group with prefix "<http://example.org/subject1>" exceeds max file size.'
     ):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 

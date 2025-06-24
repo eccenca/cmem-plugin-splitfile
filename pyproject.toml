@@ -96,6 +96,3 @@ ignore = [
     "S101",    # use of assert detected
     "TRY003",  # Avoid specifying long messages outside the exception class
 ]
-
-[tool.deptry.per_rule_ignores]
-DEP002 = ["types-requests"]

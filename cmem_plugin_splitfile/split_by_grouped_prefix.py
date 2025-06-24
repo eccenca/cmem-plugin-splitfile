@@ -279,7 +279,7 @@ class SplitGroupedPrefix:
                         group_size = len(group_data)
                         if group_size > maxsize:
                             raise ValueError(
-                                f"Group with prefix '{current_prefix.decode(errors='ignore')}' "
+                                f'Group with prefix "{current_prefix.decode(errors="ignore")}" '
                                 f"exceeds max file size."
                             )
                         if current_size + group_size > maxsize:

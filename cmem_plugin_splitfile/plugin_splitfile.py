@@ -170,7 +170,7 @@ class SplitFilePlugin(WorkflowPlugin):
             if int(chunk_size) != chunk_size or chunk_size < 1:
                 errors += "Invalid chunk size for lines. "
             if group_prefix:
-                errors += "Grouping lines with the same prefix does ot support size unit 'lines'."
+                errors += 'Grouping lines with the same prefix does not support size unit "lines".'
         elif chunk_size < 1024:  # noqa: PLR2004
             errors += "Minimum chunk size is 1024 bytes. "
 

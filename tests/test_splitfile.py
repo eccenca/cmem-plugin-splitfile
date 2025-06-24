@@ -484,7 +484,7 @@ def test_parameter_validation() -> None:
     with pytest.raises(ValueError, match="Invalid path for parameter"):
         SplitFilePlugin(input_filename="file", chunk_size=3, use_directory=True, projects_path="?")
 
-    projects_path = UUID4
+    projects_path = f"/{UUID4}"
     with pytest.raises(ValueError, match=f"Directory {projects_path} does not exist"):
         SplitFilePlugin(
             input_filename="file", chunk_size=3, use_directory=True, projects_path=projects_path

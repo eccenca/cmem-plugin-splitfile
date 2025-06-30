@@ -254,14 +254,14 @@ requests-toolbelt = ">=1.0.0,<2.0.0"
 
 [[package]]
 name = "cmem-plugin-base"
-version = "4.12.0"
+version = "4.12.1"
 description = "Base classes for developing eccenca Corporate Memory plugins."
 optional = false
 python-versions = "<4.0,>=3.11"
 groups = ["main"]
 files = [
-    {file = "cmem_plugin_base-4.12.0-py3-none-any.whl", hash = "sha256:c2940b4e56089fd0ae4f6ddf4d81923b9651b70c13df533f420fbe4953b986b1"},
-    {file = "cmem_plugin_base-4.12.0.tar.gz", hash = "sha256:6f83fcf140e4e9e1c85375435dc634f59262735ce13c0155cfccd5b961611ab8"},
+    {file = "cmem_plugin_base-4.12.1-py3-none-any.whl", hash = "sha256:e4d6584d842ff4a60bcad60d1d32b7c41cb7beac87b3b98c162aeed8c466eb07"},
+    {file = "cmem_plugin_base-4.12.1.tar.gz", hash = "sha256:b0126ebe1aafb48edd64f3de3a69cb34e981af7f8cca60ea6a334660894ba4ad"},
 ]
 
 [package.dependencies]
@@ -1639,18 +1639,18 @@ files = [
 
 [[package]]
 name = "treelib"
-version = "1.7.1"
+version = "1.8.0"
 description = "A Python implementation of tree structure."
 optional = false
-python-versions = "*"
+python-versions = "<4.0,>=3.7"
 groups = ["dev"]
 files = [
-    {file = "treelib-1.7.1-py3-none-any.whl", hash = "sha256:69aa12559c603273c77580cc86089021756654a754a7c674038de20f9daeafde"},
-    {file = "treelib-1.7.1.tar.gz", hash = "sha256:a2b57ba38290f7da6af97b41de8ff7be98e7a8c00815f95d0782241f77503952"},
+    {file = "treelib-1.8.0-py3-none-any.whl", hash = "sha256:5235d1ebf988c5026f26ce6e5e0cd470007f16d4978185f5c9b3eee8a25aef81"},
+    {file = "treelib-1.8.0.tar.gz", hash = "sha256:e1be2c6b66ffbfae85079fc4c76fb4909946d01d915ee29ff6795de53aed5d55"},
 ]
 
 [package.dependencies]
-six = "*"
+six = ">=1.13.0"
 
 [[package]]
 name = "typing-extensions"

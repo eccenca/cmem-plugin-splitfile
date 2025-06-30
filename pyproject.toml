@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cmem-plugin-splitfile"
-version = "0.0.0"
+version = "1.0.4.dev35+cd70a9d"
 license = "Apache-2.0"
 description = "Split a file into parts with a specified size"
 authors = ["eccenca GmbH <cmempy-developer@eccenca.com>"]
@@ -45,7 +45,7 @@ requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]
-enable = true
+enable = false
 vcs = "git"
 dirty = true
 bump = true

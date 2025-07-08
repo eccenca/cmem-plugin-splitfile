@@ -3,12 +3,10 @@
 import csv
 import logging
 import ntpath
-import os
 import time
 from collections.abc import Callable
+from io import BytesIO
 from pathlib import Path
-from shutil import copyfileobj
-from tempfile import mkstemp
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -155,6 +153,22 @@ class SplitGroupedPrefix:
         """
         self._manfilename = value
 
+    @staticmethod
+    def _getreadbuffersize(splitsize: int) -> int:
+        """Return buffer size to be used with the file reader
+
+        Args:
+            splitsize (int): Split size
+
+        Returns:
+            int: Buffer size
+
+        """
+        defaultchunksize = DEFAULT_CHUNK_SIZE
+        if splitsize < defaultchunksize:
+            return splitsize
+        return defaultchunksize
+
     def _getnextsplit(self, splitnum: int) -> str:
         """Return next split filename
 
@@ -186,10 +200,20 @@ class SplitGroupedPrefix:
         runtime = int((endtime - self._starttime) / 60)
         log.info(f"Process completed in {runtime} min(s)")
 
-    def bygroupedprefix(  # noqa: PLR0915 C901
+    def bygroupedprefix(  # noqa: C901 PLR0915
         self, maxsize: int, callback: Callable[[str, int], Any] | None = None
     ) -> None:
-        """Split file keeping same prefixes in same files"""
+        """Split file by groups of lines that start with the same first word (prefix)
+
+        Ensures each group stays in a single file and total split size doesn't exceed maxsize.
+
+        Args:
+            maxsize (int): Maximum file size in bytes for each split
+            callback (Callable, optional): Callback after each split with file path and size
+        Raises:
+            ValueError: If a single group of lines exceeds the allowed maxsize
+
+        """
         with Path(self.inputfile).open(mode="rb") as reader:
             manifest_path = self._getmanifestpath()
             with Path(manifest_path).open(mode="w+", encoding="utf8", newline="") as writer:
@@ -198,28 +222,20 @@ class SplitGroupedPrefix:
                 manifest.writeheader()
 
                 splitnum = 1
-                fd, temp_path = mkstemp()
-                os.close(fd)
-                current_chunk_path = Path(temp_path)
-
-                fd, temp_path = mkstemp()
-                os.close(fd)
-                prefix_buffer_path = Path(temp_path)
-
+                current_chunk = BytesIO()
                 current_size = 0
-                current_prefix = None
 
                 def write_current_chunk() -> None:
-                    nonlocal splitnum, current_chunk_path, current_size
-                    if current_chunk_path.stat().st_size == 0:
-                        return
+                    nonlocal splitnum, current_chunk, current_size
+                    if current_chunk.tell() == 0:
+                        return  # Nothing to write
                     current_file_path = Path(self.outputdir) / self._getnextsplit(splitnum)
-                    with current_chunk_path.open("rb") as src, current_file_path.open("wb") as dst:
-                        copyfileobj(src, dst)
-                    splitsize = current_file_path.stat().st_size
+                    with Path(current_file_path).open("wb") as out:
+                        out.write(current_chunk.getbuffer())
+                    splitsize = Path(current_file_path).stat().st_size
                     manifest.writerow(
                         {
-                            "filename": current_file_path.name,
+                            "filename": Path(current_file_path).name,
                             "filesize": splitsize,
                             "header": False,
                         }
@@ -227,11 +243,11 @@ class SplitGroupedPrefix:
                     if callback:
                         callback(str(current_file_path), splitsize)
                     splitnum += 1
-                    current_chunk_path.unlink(missing_ok=True)
-                    fd, temp_path = mkstemp()
-                    os.close(fd)
-                    current_chunk_path = Path(temp_path)
+                    current_chunk = BytesIO()
                     current_size = 0
+
+                prefix_buffer = BytesIO()
+                current_prefix = None
 
                 while True:
                     if self.terminate:
@@ -241,31 +257,26 @@ class SplitGroupedPrefix:
 
                     line = reader.readline()
                     if not line:
-                        group_size = prefix_buffer_path.stat().st_size
-                        if group_size > maxsize:
-                            raise ValueError("Group exceeds max split file size limit.")
-                        if current_size + group_size > maxsize:
-                            write_current_chunk()
-                        with (
-                            prefix_buffer_path.open("rb") as src,
-                            current_chunk_path.open("ab") as dst,
-                        ):
-                            copyfileobj(src, dst)
-                        current_size += group_size
-                        prefix_buffer_path.unlink(missing_ok=True)
+                        # Flush the last group
+                        if prefix_buffer.tell():
+                            group_size = prefix_buffer.tell()
+                            if group_size > maxsize:
+                                raise ValueError("Group exceeds max split file size limit.")
+                            if current_size + group_size > maxsize:
+                                write_current_chunk()
+                            current_chunk.write(prefix_buffer.getbuffer())
                         write_current_chunk()
                         break
 
                     first_word = line.split(maxsplit=1)[0] if line.strip() else b""
                     if current_prefix is None:
                         current_prefix = first_word
-                        with prefix_buffer_path.open("ab") as f:
-                            f.write(line)
+                        prefix_buffer.write(line)
                     elif first_word == current_prefix:
-                        with prefix_buffer_path.open("ab") as f:
-                            f.write(line)
+                        prefix_buffer.write(line)
                     else:
-                        group_size = prefix_buffer_path.stat().st_size
+                        group_data = prefix_buffer.getvalue()
+                        group_size = len(group_data)
                         if group_size > maxsize:
                             raise ValueError(
                                 f'Group with prefix "{current_prefix.decode(errors="ignore")}" '
@@ -273,24 +284,10 @@ class SplitGroupedPrefix:
                             )
                         if current_size + group_size > maxsize:
                             write_current_chunk()
-                        with (
-                            prefix_buffer_path.open("rb") as src,
-                            current_chunk_path.open("ab") as dst,
-                        ):
-                            copyfileobj(src, dst)
+                        current_chunk.write(group_data)
                         current_size += group_size
-                        prefix_buffer_path.unlink(missing_ok=True)
-                        fd, temp_path = mkstemp()
-                        os.close(fd)
-                        prefix_buffer_path = Path(temp_path)
-                        with prefix_buffer_path.open("ab") as f:
-                            f.write(line)
+                        prefix_buffer = BytesIO()
+                        prefix_buffer.write(line)
                         current_prefix = first_word
-
-                # Cleanup leftovers
-                if prefix_buffer_path.exists():
-                    prefix_buffer_path.unlink(missing_ok=True)
-                if current_chunk_path.exists():
-                    current_chunk_path.unlink(missing_ok=True)
 
         self._endprocess()

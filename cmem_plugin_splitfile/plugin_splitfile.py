@@ -158,9 +158,9 @@ class SplitFilePlugin(WorkflowPlugin):
         if size_unit == SIZE_UNIT_KB:
             chunk_size *= 1024
         elif size_unit == SIZE_UNIT_MB:
-            chunk_size *= 1048576
+            chunk_size *= 1024**2
         elif size_unit == SIZE_UNIT_GB:
-            chunk_size *= 1073741824
+            chunk_size *= 1024**3
         elif size_unit == SIZE_UNIT_LINES:
             self.lines = True
         else:

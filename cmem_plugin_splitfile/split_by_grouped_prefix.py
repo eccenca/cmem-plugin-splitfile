@@ -5,7 +5,6 @@ import logging
 import ntpath
 import time
 from collections.abc import Callable
-from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -206,47 +205,38 @@ class SplitGroupedPrefix:
         """Split file by groups of lines that start with the same first word (prefix)
 
         Ensures each group stays in a single file and total split size doesn't exceed maxsize.
-
-        Args:
-            maxsize (int): Maximum file size in bytes for each split
-            callback (Callable, optional): Callback after each split with file path and size
-        Raises:
-            ValueError: If a single group of lines exceeds the allowed maxsize
-
+        Uses constant memory by storing only offsets and streaming chunks directly from disk.
         """
-        with Path(self.inputfile).open(mode="rb") as reader:
+        splitnum = 1
+
+        def write_chunk(start: int, end: int) -> None:
+            nonlocal splitnum
+            chunk_path = Path(self.outputdir) / self._getnextsplit(splitnum)
+            with Path(self.inputfile).open("rb") as src, Path(chunk_path).open("wb") as dst:
+                src.seek(start)
+                remaining = end - start
+                while remaining > 0:
+                    buf = src.read(min(DEFAULT_CHUNK_SIZE, remaining))
+                    if not buf:
+                        break
+                    dst.write(buf)
+                    remaining -= len(buf)
+            size = Path(chunk_path).stat().st_size
+            manifest.writerow({"filename": chunk_path.name, "filesize": size, "header": False})
+            if callback:
+                callback(str(chunk_path), size)
+            splitnum += 1
+
+        with Path(self.inputfile).open("rb") as reader:
             manifest_path = self._getmanifestpath()
-            with Path(manifest_path).open(mode="w+", encoding="utf8", newline="") as writer:
+            with Path(manifest_path).open("w+", encoding="utf8", newline="") as writer:
                 fieldnames = ["filename", "filesize", "header"]
                 manifest = csv.DictWriter(writer, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
                 manifest.writeheader()
 
                 splitnum = 1
-                current_chunk = BytesIO()
-                current_size = 0
-
-                def write_current_chunk() -> None:
-                    nonlocal splitnum, current_chunk, current_size
-                    if current_chunk.tell() == 0:
-                        return  # Nothing to write
-                    current_file_path = Path(self.outputdir) / self._getnextsplit(splitnum)
-                    with Path(current_file_path).open("wb") as out:
-                        out.write(current_chunk.getbuffer())
-                    splitsize = Path(current_file_path).stat().st_size
-                    manifest.writerow(
-                        {
-                            "filename": Path(current_file_path).name,
-                            "filesize": splitsize,
-                            "header": False,
-                        }
-                    )
-                    if callback:
-                        callback(str(current_file_path), splitsize)
-                    splitnum += 1
-                    current_chunk = BytesIO()
-                    current_size = 0
-
-                prefix_buffer = BytesIO()
+                chunk_start_offset = 0
+                last_prefix_offset = 0
                 current_prefix = None
 
                 while True:
@@ -255,39 +245,35 @@ class SplitGroupedPrefix:
                         log.info("Terminating the process.")
                         break
 
+                    line_offset = reader.tell()
                     line = reader.readline()
                     if not line:
-                        # Flush the last group
-                        if prefix_buffer.tell():
-                            group_size = prefix_buffer.tell()
-                            if group_size > maxsize:
-                                raise ValueError("Group exceeds max split file size limit.")
-                            if current_size + group_size > maxsize:
-                                write_current_chunk()
-                            current_chunk.write(prefix_buffer.getbuffer())
-                        write_current_chunk()
+                        # End of file: write remaining chunk
+                        if line_offset > chunk_start_offset:
+                            write_chunk(chunk_start_offset, line_offset)
                         break
 
                     first_word = line.split(maxsplit=1)[0] if line.strip() else b""
+
                     if current_prefix is None:
                         current_prefix = first_word
-                        prefix_buffer.write(line)
-                    elif first_word == current_prefix:
-                        prefix_buffer.write(line)
-                    else:
-                        group_data = prefix_buffer.getvalue()
-                        group_size = len(group_data)
+                        last_prefix_offset = line_offset
+                        continue
+
+                    if first_word != current_prefix:
+                        group_size = line_offset - last_prefix_offset
                         if group_size > maxsize:
                             raise ValueError(
                                 f'Group with prefix "{current_prefix.decode(errors="ignore")}" '
-                                f"exceeds max file size."
+                                f"exceeds max file size ({group_size} > {maxsize})."
                             )
-                        if current_size + group_size > maxsize:
-                            write_current_chunk()
-                        current_chunk.write(group_data)
-                        current_size += group_size
-                        prefix_buffer = BytesIO()
-                        prefix_buffer.write(line)
+
+                        chunk_size = line_offset - chunk_start_offset
+                        if chunk_size + len(line) > maxsize:
+                            write_chunk(chunk_start_offset, last_prefix_offset)
+                            chunk_start_offset = last_prefix_offset
+
                         current_prefix = first_word
+                        last_prefix_offset = line_offset
 
         self._endprocess()

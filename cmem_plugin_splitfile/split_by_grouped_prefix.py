@@ -1,9 +1,12 @@
+"""Split grouped prefix"""
+
 import csv
 import logging
 import ntpath
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +18,7 @@ MAX_ZERO_FILL = 10
 MANIFEST_FILE_NAME = "manifest"
 
 
-class ZeroFillOutOfRange(Exception):
+class ZeroFillOutOfRangeError(Exception):
     """Zero-fill out of range exception"""
 
 
@@ -39,6 +42,7 @@ class SplitGroupedPrefix:
 
     @property
     def terminate(self) -> bool:
+        """Terminate flag"""
         return self._terminate
 
     @terminate.setter
@@ -47,14 +51,17 @@ class SplitGroupedPrefix:
 
     @property
     def inputfile(self) -> str:
+        """Return input file path"""
         return self._inputfile
 
     @property
     def outputdir(self) -> str:
+        """Return output directory path"""
         return self._outputdir
 
     @property
     def splitdelimiter(self) -> str:
+        """Return delimiter"""
         return self._splitdelimiter
 
     @splitdelimiter.setter
@@ -63,18 +70,20 @@ class SplitGroupedPrefix:
 
     @property
     def splitzerofill(self) -> int:
+        """Return zero fill"""
         return self._splitzerofill
 
     @splitzerofill.setter
     def splitzerofill(self, value: int) -> None:
         if not MIN_ZERO_FILL <= value <= MAX_ZERO_FILL:
-            raise ZeroFillOutOfRange(
+            raise ZeroFillOutOfRangeError(
                 f"Zero fill must be between {MIN_ZERO_FILL} and {MAX_ZERO_FILL}."
             )
         self._splitzerofill = value
 
     @property
     def manfilename(self) -> str:
+        """Return manifest filename"""
         return self._manfilename
 
     @manfilename.setter
@@ -95,8 +104,8 @@ class SplitGroupedPrefix:
         runtime = int((endtime - self._starttime) / 60)
         log.info(f"Process completed in {runtime} min(s)")
 
-    def bygroupedprefix(
-            self, maxsize: int, callback: Callable[[str, int], Any] | None = None
+    def bygroupedprefix(  # noqa: C901 PLR0915
+        self, maxsize: int, callback: Callable[[str, int], Any] | None = None
     ) -> None:
         """Streaming split, keeping groups intact, packing multiple groups per file if possible"""
         manifest_path = self._getmanifestpath()
@@ -112,7 +121,7 @@ class SplitGroupedPrefix:
             outfile = None
             outfile_path = None
 
-            def close_outfile():
+            def close_outfile() -> None:
                 nonlocal outfile, outfile_path, current_size
                 if outfile:
                     outfile.close()
@@ -173,14 +182,14 @@ class SplitGroupedPrefix:
                         outfile_path = Path(self.outputdir) / self._getnextsplit(splitnum)
                         outfile = outfile_path.open("wb")
 
-                    outfile.write(line)
+                    outfile.write(line)  # type: ignore[union-attr]
                     current_size += len(line)
 
                 # Final group size check
                 if group_size > maxsize:
                     close_outfile()
                     raise ValueError(
-                        f'Group with prefix "{current_prefix.decode(errors="ignore")}" '
+                        f'Group with prefix "{current_prefix.decode(errors="ignore")}" '  # type: ignore[union-attr]
                         f"exceeds max file size."
                     )
 

@@ -14,7 +14,6 @@ SPLIT_DELIMITER = "_"
 ZERO_FILL = 4
 MIN_ZERO_FILL = 1
 MAX_ZERO_FILL = 10
-MANIFEST_FILE_NAME = "manifest"
 
 
 class ZeroFillOutOfRangeError(Exception):

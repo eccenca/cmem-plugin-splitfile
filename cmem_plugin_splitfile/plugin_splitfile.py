@@ -2,7 +2,7 @@
 
 import re
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from io import BytesIO
 from pathlib import Path
 from shutil import move
@@ -129,7 +129,8 @@ SPLIT_ZERO_FILL = 9
             name="delete_previous_result",
             label="""Delete previous result.""",
             description="""Delete the previous result from splitting a file with the input filename
-            from the target directory.""",
+            from the target directory. If disabled, the output file numbering increments from the
+            last chunk (only works with "Group lines with the same prefix in one file").""",
         ),
     ],
 )
@@ -206,6 +207,7 @@ class SplitFilePlugin(WorkflowPlugin):
         self.output_port = None
         self.moved_files = 0
         self.split_filenames: list[str] = []
+        self.last_file = 0
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
@@ -235,7 +237,9 @@ class SplitFilePlugin(WorkflowPlugin):
         else:
             self.split = SplitGroupedPrefix(inputfile=str(input_file_path), outputdir=self.temp)
             self.split.splitzerofill = SPLIT_ZERO_FILL
-            self.split.bygroupedprefix(maxsize=self.size, callback=self.split_callback)
+            self.split.bygroupedprefix(
+                maxsize=self.size, splitnum=self.last_file + 1, callback=self.split_callback
+            )git status
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""
@@ -279,11 +283,29 @@ class SplitFilePlugin(WorkflowPlugin):
             return resources_path / self.input_filename
         return Path(self.temp) / Path(self.input_filename).name
 
-    def delete_previous_results(self, resources_path: Path) -> None:
-        """Delete previous results"""
-        self.log.info("Removing files from previous result.")
+    def delete_previous_results(self, resources_path: Path) -> None:  # noqa: C901
+        """Delete previous results, or collect last file number."""
+        self.log.info("Checking for previous results...")
+        numbers = []
         input_path = Path(self.input_filename)
-        fname_pattern = rf"{input_path.stem}_[0-9]{{{SPLIT_ZERO_FILL}}}{input_path.suffix}"
+
+        # Regex anchored and escaped, with capturing group
+        fname_pattern = rf"^{re.escape(input_path.stem)}_(\d{{{SPLIT_ZERO_FILL}}}){re.escape(input_path.suffix)}$"  # nonqa: E501
+        regex = re.compile(fname_pattern)
+
+        def handle_match(name: str, delete_fn: Callable[[], None] | None = None) -> None:
+            """Process a matching filename: delete or collect number."""
+            m = regex.match(name)
+            if not m:
+                return
+            if self.delete_previous_result and delete_fn:
+                try:
+                    delete_fn()
+                    self.log.info(f"Deleted: {name}")
+                except Exception as e:  # noqa: BLE001
+                    self.log.error(f"Failed to delete {name}: {e}")  # noqa: TRY400
+            elif self.group_prefix:
+                numbers.append(int(m.group(1)))
 
         if self.use_directory or self.custom_target_directory:
             target_path = (
@@ -291,23 +313,23 @@ class SplitFilePlugin(WorkflowPlugin):
                 if self.custom_target_directory
                 else resources_path
             )
-            input_parent = input_path.parent
-            if not self.custom_target_directory and str(input_parent) != ".":
-                target_path /= input_parent
-            for f in target_path.glob("*"):
-                if re.match(fname_pattern, f.name):
-                    f.unlink(missing_ok=True)
-                    self.log.info(f"File {f} deleted.")
+            if not self.custom_target_directory and str(input_path.parent) != ".":
+                target_path /= input_path.parent
+
+            for f in target_path.iterdir():
+                if f.is_file():
+                    handle_match(f.name, delete_fn=lambda f=f: f.unlink(missing_ok=True))
+
         else:
             setup_cmempy_user_access(self.context.user)
-            files = [
-                r["name"]
-                for r in get_resources(self.context.task.project_id())
-                if re.match(fname_pattern, r["name"])
-            ]
-            for f in files:
-                delete_resource(self.context.task.project_id(), f)
-                self.log.info(f"Resource {f} deleted.")
+            project_id = self.context.task.project_id()
+
+            for r in get_resources(project_id):
+                handle_match(
+                    r["name"], delete_fn=lambda r=r: delete_resource(project_id, r["name"])
+                )
+
+        self.last_file = max(numbers) if numbers else 0
 
     def move_or_upload_output_file(self, filename: str, resources_path: Path) -> None:
         """Move or upload output file"""

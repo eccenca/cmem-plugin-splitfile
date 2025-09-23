@@ -90,10 +90,10 @@ class SplitGroupedPrefix:
         log.info(f"Process completed in {runtime} min(s)")
 
     def bygroupedprefix(  # noqa: C901 PLR0915
-        self, maxsize: int, callback: Callable[[str, int], Any] | None = None
+        self, maxsize: int, splitnum: int = 1, callback: Callable[[str, int], Any] | None = None
     ) -> None:
         """Streaming split, keeping groups intact, packing multiple groups per file if possible"""
-        splitnum = 1
+        # splitnum = 1  # noqa: ERA001
         current_prefix = None
         current_size = 0
         group_size = 0

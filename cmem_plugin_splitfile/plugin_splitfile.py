@@ -239,7 +239,7 @@ class SplitFilePlugin(WorkflowPlugin):
             self.split.splitzerofill = SPLIT_ZERO_FILL
             self.split.bygroupedprefix(
                 maxsize=self.size, splitnum=self.last_file + 1, callback=self.split_callback
-            )git status
+            )
 
     def split_callback(self, file_path: str, file_size: int) -> None:
         """Add split files to list"""

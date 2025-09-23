@@ -290,7 +290,7 @@ class SplitFilePlugin(WorkflowPlugin):
         input_path = Path(self.input_filename)
 
         # Regex anchored and escaped, with capturing group
-        fname_pattern = rf"^{re.escape(input_path.stem)}_(\d{{{SPLIT_ZERO_FILL}}}){re.escape(input_path.suffix)}$"  # nonqa: E501
+        fname_pattern = rf"^{re.escape(input_path.stem)}_(\d{{{SPLIT_ZERO_FILL}}}){re.escape(input_path.suffix)}$"  # noqa: E501
         regex = re.compile(fname_pattern)
 
         def handle_match(name: str, delete_fn: Callable[[], None] | None = None) -> None:

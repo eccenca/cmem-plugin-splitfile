@@ -318,7 +318,7 @@ class SplitFilePlugin(WorkflowPlugin):
 
             for f in target_path.iterdir():
                 if f.is_file():
-                    handle_match(f.name, delete_fn=lambda f=f: f.unlink(missing_ok=True))
+                    handle_match(f.name, delete_fn=lambda f=f: f.unlink(missing_ok=True))  # type: ignore[misc]
 
         else:
             setup_cmempy_user_access(self.context.user)
@@ -326,7 +326,8 @@ class SplitFilePlugin(WorkflowPlugin):
 
             for r in get_resources(project_id):
                 handle_match(
-                    r["name"], delete_fn=lambda r=r: delete_resource(project_id, r["name"])
+                    r["name"],
+                    delete_fn=lambda r=r: delete_resource(project_id, r["name"]),  # type: ignore[misc]
                 )
 
         self.last_file = max(numbers) if numbers else 0

@@ -301,7 +301,7 @@ def test_filesystem_lines_header() -> None:
 
 
 @pytest.mark.usefixtures("setup_filesystem")
-def test_group_prefix() -> None:
+def test_group_prefix_filesystem_delete_previous() -> None:
     """Test split by size using file system"""
     SplitFilePlugin(
         input_filename=TEST_FILENAME,
@@ -310,6 +310,7 @@ def test_group_prefix() -> None:
         projects_path=__path__[0],
         use_directory=True,
         group_prefix=True,
+        delete_previous_result=True,
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
@@ -320,6 +321,79 @@ def test_group_prefix() -> None:
 
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
         raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup_filesystem")
+def test_group_prefix_filesystem_increment() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        group_prefix=True,
+        delete_previous_result=False,
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        assert cmp(
+            Path(__path__[0]) / PROJECT_ID / "resources" / f"{UUID4}_00000000{n + 3}.nt",
+            Path(__path__[0]) / "test_files" / f"{UUID4}_group_00000000{n + 1}.nt",
+        )
+
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).is_file():
+        raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup_api")
+def test_group_prefix_api_delete_previous() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+        group_prefix=True,
+        delete_previous_result=True,
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 1}.nt")
+        assert (
+            f
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_group_00000000{n + 1}.nt")
+            .open("rb")
+            .read()
+        )
+
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+
+
+@pytest.mark.usefixtures("setup_api")
+def test_group_prefix_api_increment() -> None:
+    """Test split by size using file system"""
+    SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+        group_prefix=True,
+        delete_previous_result=False,
+    ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+    for n in range(3):
+        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 3}.nt")
+        assert (
+            f
+            == (Path(__path__[0]) / "test_files" / f"{UUID4}_group_00000000{n + 1}.nt")
+            .open("rb")
+            .read()
+        )
+
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
 
 @pytest.mark.usefixtures("setup_api")

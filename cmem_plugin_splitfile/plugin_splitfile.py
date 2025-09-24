@@ -261,8 +261,7 @@ class SplitFilePlugin(WorkflowPlugin):
         if input_file_path.stat().st_size == 0:
             raise OSError(f'Input file "{self.input_filename}" is empty.')
 
-        if self.delete_previous_result:
-            self.delete_previous_results(resources_path)
+        self.delete_previous_results(resources_path)
 
         self.split_file(input_file_path)
 

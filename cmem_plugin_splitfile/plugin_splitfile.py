@@ -383,9 +383,12 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
-        if self.use_directory and self.custom_target_directory:
-            if not Path(self.custom_target_directory).is_dir():
-                raise ValueError(f"Directory {self.custom_target_directory} does not exist ")
+        if (
+            self.use_directory
+            and self.custom_target_directory
+            and not Path(self.custom_target_directory).is_dir()
+        ):
+            raise ValueError(f"Directory {self.custom_target_directory} does not exist ")
 
         self.context = context
         context.report.update(ExecutionReport(entity_count=0, operation_desc="files generated"))

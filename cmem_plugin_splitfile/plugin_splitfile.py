@@ -137,7 +137,7 @@ SPLIT_ZERO_FILL = 9
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0912 PLR0913 PLR0915
+    def __init__(  # noqa: C901, PLR0912, PLR0913
         self,
         input_filename: str,
         chunk_size: float,
@@ -187,9 +187,7 @@ class SplitFilePlugin(WorkflowPlugin):
             if custom_target_directory:
                 test_path = custom_target_directory.removeprefix("/")
                 if not is_valid_filepath(test_path):
-                    errors += 'Invalid path for parameter "Target directory". '
-                elif not Path(custom_target_directory).is_dir():
-                    errors += f"Directory {custom_target_directory} does not exist. "
+                    raise ValueError('Invalid path for parameter "Custom target directory"')
 
         if errors:
             raise ValueError(errors[:-1])
@@ -385,6 +383,10 @@ class SplitFilePlugin(WorkflowPlugin):
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
+        if self.use_directory and self.custom_target_directory:
+            if not Path(self.custom_target_directory).is_dir():
+                raise ValueError(f"Directory {self.custom_target_directory} does not exist ")
+
         self.context = context
         context.report.update(ExecutionReport(entity_count=0, operation_desc="files generated"))
 

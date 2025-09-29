@@ -646,7 +646,7 @@ def test_regex() -> None:
         use_directory=True,
     )
 
-    input_path = Path("fc26980a17144b20ad8138d2493f0c2b.nt")
+    input_path = Path(TEST_FILENAME)
     plugin.split_filenames = [
         str(
             input_path.parent

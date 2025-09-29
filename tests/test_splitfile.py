@@ -1,5 +1,6 @@
 """Plugin tests."""
 
+import re
 from collections.abc import Generator
 from contextlib import suppress
 from filecmp import cmp
@@ -633,3 +634,29 @@ def test_filesystem_no_file() -> None:
     )
     with pytest.raises(FileNotFoundError, match=f'Input file "{TEST_FILENAME}" not found.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+
+
+def test_regex() -> None:
+    """Test output filenames regex"""
+    plugin = SplitFilePlugin(
+        input_filename=TEST_FILENAME,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+    )
+
+    input_path = Path("fc26980a17144b20ad8138d2493f0c2b.nt")
+    plugin.split_filenames = [
+        str(
+            input_path.parent
+            / f"{input_path.stem}_{str(i).zfill(SPLIT_ZERO_FILL)}{input_path.suffix}"
+        )
+        for i in range(1, 4)
+    ]
+    regex = re.compile(plugin.generate_files_regex())
+
+    for filename in plugin.split_filenames:
+        assert regex.match(filename), (
+            f"Filename {filename} does not match expected pattern {regex.pattern}"
+        )

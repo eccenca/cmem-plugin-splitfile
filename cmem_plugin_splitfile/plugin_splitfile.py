@@ -18,11 +18,11 @@ from cmem.cmempy.workspace.projects.resources.resource import (
 )
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
-from cmem_plugin_base.dataintegration.entity import Entities
+from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
-from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs
+from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs, FixedSchemaPort
 from cmem_plugin_base.dataintegration.types import (
     BoolParameterType,
     FloatParameterType,
@@ -50,6 +50,7 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
 )
 
 SPLIT_ZERO_FILL = 9
+TYPE_URI = "urn:x-eccenca:splifile"
 
 
 @Plugin(
@@ -137,7 +138,7 @@ SPLIT_ZERO_FILL = 9
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901, PLR0912, PLR0913
+    def __init__(  # noqa: C901, PLR0912, PLR0913 PLR0915
         self,
         input_filename: str,
         chunk_size: float,
@@ -201,11 +202,14 @@ class SplitFilePlugin(WorkflowPlugin):
         self.delete_input_file = delete_input_file
         self.use_directory = use_directory
         self.delete_previous_result = delete_previous_result
-        self.input_ports = FixedNumberOfInputs([])
-        self.output_port = None
+
         self.moved_files = 0
         self.split_filenames: list[str] = []
         self.last_file = 0
+
+        self.input_ports = FixedNumberOfInputs([])
+        self.schema = EntitySchema(type_uri=TYPE_URI, paths=[EntityPath("filesRegex")])
+        self.output_port = FixedSchemaPort(self.schema)
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
@@ -381,7 +385,34 @@ class SplitFilePlugin(WorkflowPlugin):
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)
 
-    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
+    def generate_files_regex(self) -> str:
+        """Generate filename regex"""
+        count = len(self.split_filenames)
+
+        path = Path(self.input_filename)
+        folder = "" if path.parent == Path() else str(path.parent) + "/"
+
+        stem = path.stem
+        extension = path.suffix
+
+        # Generate all valid numbers with zero padding
+        numbers = [
+            str(i).zfill(SPLIT_ZERO_FILL)
+            for i in range(1 + self.last_file, count + 1 + self.last_file)
+        ]
+
+        # Build prefix: folder + stem + underscore
+        prefix = f"{folder}{stem}_"
+
+        # Escape special regex characters
+        escaped_prefix = re.escape(prefix)
+        escaped_extension = re.escape(extension)
+
+        numbers_pattern = "|".join(numbers)
+
+        return f"^{escaped_prefix}(?:{numbers_pattern}){escaped_extension}$"
+
+    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
         if (
             self.use_directory
@@ -397,10 +428,12 @@ class SplitFilePlugin(WorkflowPlugin):
             context.report.update(
                 ExecutionReport(entity_count=0, operation_desc="files generated (cancelled")
             )
-            return
+            return None
 
         with TemporaryDirectory() as self.temp:
             finished = self.execute_split()
+
+        files_regex = self.generate_files_regex()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"
         if not finished:
@@ -408,3 +441,6 @@ class SplitFilePlugin(WorkflowPlugin):
         context.report.update(
             ExecutionReport(entity_count=self.moved_files, operation_desc=operation_desc)
         )
+
+        entities = [Entity(uri=f"{TYPE_URI}_1", values=[[files_regex]])]
+        return Entities(entities=entities, schema=self.schema)

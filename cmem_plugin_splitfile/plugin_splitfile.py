@@ -391,12 +391,8 @@ class SplitFilePlugin(WorkflowPlugin):
         TODO: make regex based on custom target folder
         """
         count = len(self.split_filenames)
-
         path = Path(self.input_filename)
         folder = "" if path.parent == Path() else str(path.parent) + "/"
-
-        stem = path.stem
-        extension = path.suffix
 
         # Generate all valid numbers with zero padding
         numbers = [
@@ -405,15 +401,10 @@ class SplitFilePlugin(WorkflowPlugin):
         ]
 
         # Build prefix: folder + stem + underscore
-        prefix = f"{folder}{stem}_"
-
-        # Escape special regex characters
-        escaped_prefix = re.escape(prefix)
-        escaped_extension = re.escape(extension)
-
+        prefix = f"{folder}{path.stem}_"
         numbers_pattern = "|".join(numbers)
 
-        return f"^{escaped_prefix}(?:{numbers_pattern}){escaped_extension}$"
+        return f"^{re.escape(prefix)}(?:{numbers_pattern}){re.escape(path.suffix)}$"
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:  # noqa: ARG002
         """Execute plugin with temporary directory"""

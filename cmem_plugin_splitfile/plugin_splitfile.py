@@ -138,7 +138,7 @@ TYPE_URI = "urn:x-eccenca:splifile"
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901, PLR0912, PLR0913 PLR0915
+    def __init__(  # noqa: C901 PLR0912 PLR0913 PLR0915
         self,
         input_filename: str,
         chunk_size: float,
@@ -386,7 +386,10 @@ class SplitFilePlugin(WorkflowPlugin):
                     f.write(chunk)
 
     def generate_files_regex(self) -> str:
-        """Generate filename regex"""
+        """Generate filename regex
+
+        TODO: make regex based on custom target folder
+        """
         count = len(self.split_filenames)
 
         path = Path(self.input_filename)

@@ -210,7 +210,7 @@ def test_api_empty_file() -> None:
         size_unit="KB",
         projects_path=__path__[0],
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
 
@@ -225,7 +225,7 @@ def test_filesystem_empty_file() -> None:
         projects_path=__path__[0],
         use_directory=True,
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
         raise OSError("Input file deleted.")
@@ -241,7 +241,7 @@ def test_api_empty_file_delete() -> None:
         projects_path=__path__[0],
         delete_file=True,
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
         get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
@@ -258,7 +258,7 @@ def test_filesystem_empty_file_delete() -> None:
         use_directory=True,
         delete_file=True,
     )
-    with pytest.raises(OSError, match="Input file is empty."):
+    with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
     if (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
         raise OSError("Input file not deleted.")

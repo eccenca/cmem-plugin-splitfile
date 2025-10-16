@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - Validate size unit parameter.
 
+### Changed
+
+- update template and fix according test suite
+- ensured python 3.13 compatability
+- python 3.13 now required
+
 ## [1.0.3] 2025-02-11
 
 ### Changed

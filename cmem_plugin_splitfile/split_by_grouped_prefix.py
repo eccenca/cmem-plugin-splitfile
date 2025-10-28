@@ -93,7 +93,6 @@ class SplitGroupedPrefix:
         self, maxsize: int, splitnum: int = 1, callback: Callable[[str, int], Any] | None = None
     ) -> None:
         """Streaming split, keeping groups intact, packing multiple groups per file if possible"""
-        # splitnum = 1  # noqa: ERA001
         current_prefix = None
         current_size = 0
         group_size = 0

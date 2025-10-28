@@ -1,6 +1,5 @@
 """Plugin tests."""
 
-import re
 from collections.abc import Generator
 from contextlib import suppress
 from filecmp import cmp
@@ -398,6 +397,21 @@ def test_group_prefix_api_increment() -> None:
 
 
 @pytest.mark.usefixtures("setup_api")
+def test_api_empty_file_delete_previous() -> None:
+    """Test split by size using API"""
+    input_file = f"empty_{TEST_FILENAME}"
+    plugin = SplitFilePlugin(
+        input_filename=input_file,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=False,
+    )
+    plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+
+
+@pytest.mark.usefixtures("setup_api")
 def test_api_empty_file() -> None:
     """Test split by size using API"""
     input_file = f"empty_{TEST_FILENAME}"
@@ -407,6 +421,7 @@ def test_api_empty_file() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=False,
+        delete_previous_result=True,
     )
     with pytest.raises(OSError, match=f'Input file "{input_file}" is empty.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
@@ -423,6 +438,23 @@ def test_filesystem_empty_file() -> None:
         size_unit="KB",
         projects_path=__path__[0],
         use_directory=True,
+    )
+    plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
+    if not (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").is_file():
+        raise OSError("Input file deleted.")
+
+
+@pytest.mark.usefixtures("setup_filesystem")
+def test_filesystem_empty_file_delete_previous() -> None:
+    """Test empty input file using file system"""
+    input_file = f"empty_{TEST_FILENAME}"
+    plugin = SplitFilePlugin(
+        input_filename=input_file,
+        chunk_size=3,
+        size_unit="KB",
+        projects_path=__path__[0],
+        use_directory=True,
+        delete_previous_result=True,
     )
     with pytest.raises(OSError, match=f'Input file "{input_file}" is empty.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
@@ -610,7 +642,7 @@ def test_group_prefix_size_error() -> None:
 
 @pytest.mark.usefixtures("setup_no_file")
 def test_api_no_file() -> None:
-    """Test empty input file using file system"""
+    """Test missing input file using file system"""
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
         chunk_size=3,
@@ -624,7 +656,7 @@ def test_api_no_file() -> None:
 
 @pytest.mark.usefixtures("setup_no_file")
 def test_filesystem_no_file() -> None:
-    """Test empty input file using file system"""
+    """Test missing input file using file system"""
     plugin = SplitFilePlugin(
         input_filename=TEST_FILENAME,
         chunk_size=3,
@@ -634,29 +666,3 @@ def test_filesystem_no_file() -> None:
     )
     with pytest.raises(FileNotFoundError, match=f'Input file "{TEST_FILENAME}" not found.'):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-
-
-def test_regex() -> None:
-    """Test output filenames regex"""
-    plugin = SplitFilePlugin(
-        input_filename=TEST_FILENAME,
-        chunk_size=3,
-        size_unit="KB",
-        projects_path=__path__[0],
-        use_directory=True,
-    )
-
-    input_path = Path(TEST_FILENAME)
-    plugin.split_filenames = [
-        str(
-            input_path.parent
-            / f"{input_path.stem}_{str(i).zfill(SPLIT_ZERO_FILL)}{input_path.suffix}"
-        )
-        for i in range(1, 4)
-    ]
-    regex = re.compile(plugin.generate_files_regex())
-
-    for filename in plugin.split_filenames:
-        assert regex.match(filename), (
-            f"Filename {filename} does not match expected pattern {regex.pattern}"
-        )

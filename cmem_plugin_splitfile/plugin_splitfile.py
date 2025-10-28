@@ -18,11 +18,11 @@ from cmem.cmempy.workspace.projects.resources.resource import (
 )
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
-from cmem_plugin_base.dataintegration.entity import Entities, Entity, EntityPath, EntitySchema
+from cmem_plugin_base.dataintegration.entity import Entities  # , Entity, EntityPath, EntitySchema
 from cmem_plugin_base.dataintegration.parameter.choice import ChoiceParameterType
 from cmem_plugin_base.dataintegration.parameter.resource import ResourceParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
-from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs, FixedSchemaPort
+from cmem_plugin_base.dataintegration.ports import FixedNumberOfInputs  # , FixedSchemaPort
 from cmem_plugin_base.dataintegration.types import (
     BoolParameterType,
     FloatParameterType,
@@ -138,7 +138,7 @@ TYPE_URI = "urn:x-eccenca:splifile"
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0912 PLR0913 PLR0915
+    def __init__(  # noqa: C901, PLR0912, PLR0913
         self,
         input_filename: str,
         chunk_size: float,
@@ -208,8 +208,7 @@ class SplitFilePlugin(WorkflowPlugin):
         self.last_file = 0
 
         self.input_ports = FixedNumberOfInputs([])
-        self.schema = EntitySchema(type_uri=TYPE_URI, paths=[EntityPath("filesRegex")])
-        self.output_port = FixedSchemaPort(self.schema)
+        self.output_port = None
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
@@ -261,7 +260,9 @@ class SplitFilePlugin(WorkflowPlugin):
             raise FileNotFoundError(f'Input file "{self.input_filename}" not found.')
 
         if input_file_path.stat().st_size == 0:
-            raise OSError(f'Input file "{self.input_filename}" is empty.')
+            if self.delete_previous_result:
+                raise OSError(f'Input file "{self.input_filename}" is empty.')
+            return True
 
         self.delete_previous_results(resources_path)
 
@@ -379,34 +380,11 @@ class SplitFilePlugin(WorkflowPlugin):
         }
         with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
             r.raise_for_status()
-            if r.text == "":
-                raise OSError(f'Input file "{self.input_filename}" is empty.')
             with file_path.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=10485760):
                     f.write(chunk)
 
-    def generate_files_regex(self) -> str:
-        """Generate filename regex
-
-        TODO: make regex based on custom target folder
-        """
-        count = len(self.split_filenames)
-        path = Path(self.input_filename)
-        folder = "" if path.parent == Path() else str(path.parent) + "/"
-
-        # Generate all valid numbers with zero padding
-        numbers = [
-            str(i).zfill(SPLIT_ZERO_FILL)
-            for i in range(1 + self.last_file, count + 1 + self.last_file)
-        ]
-
-        # Build prefix: folder + stem + underscore
-        prefix = f"{folder}{path.stem}_"
-        numbers_pattern = "|".join(numbers)
-
-        return f"^{re.escape(prefix)}(?:{numbers_pattern}){re.escape(path.suffix)}$"
-
-    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:  # noqa: ARG002
+    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""
         if (
             self.use_directory
@@ -422,12 +400,10 @@ class SplitFilePlugin(WorkflowPlugin):
             context.report.update(
                 ExecutionReport(entity_count=0, operation_desc="files generated (cancelled")
             )
-            return None
+            return
 
         with TemporaryDirectory() as self.temp:
             finished = self.execute_split()
-
-        files_regex = self.generate_files_regex()
 
         operation_desc = "file generated" if self.moved_files == 1 else "files generated"
         if not finished:
@@ -435,6 +411,3 @@ class SplitFilePlugin(WorkflowPlugin):
         context.report.update(
             ExecutionReport(entity_count=self.moved_files, operation_desc=operation_desc)
         )
-
-        entities = [Entity(uri=f"{TYPE_URI}_1", values=[[files_regex]])]
-        return Entities(entities=entities, schema=self.schema)

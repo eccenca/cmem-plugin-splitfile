@@ -11,6 +11,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - Validate size unit parameter.
 
+### Changed
+
+- Do not read entire file on PUT request for output files when using API
+
 ## [1.0.3] 2025-02-11
 
 ### Changed

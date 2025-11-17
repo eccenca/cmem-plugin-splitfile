@@ -2,7 +2,6 @@
 
 from collections import OrderedDict
 from collections.abc import Sequence
-from io import BytesIO
 from pathlib import Path
 from shutil import move
 from tempfile import TemporaryDirectory
@@ -229,12 +228,11 @@ class SplitFilePlugin(WorkflowPlugin):
             if self.cancel_workflow():
                 return False
             with Path(filename).open("rb") as f:
-                buf = BytesIO(f.read())
                 setup_cmempy_user_access(self.context.user)
                 create_resource(
                     project_name=self.context.task.project_id(),
                     resource_name=str(Path(self.input_filename).parent / Path(filename).name),
-                    file_resource=buf,
+                    file_resource=f,
                     replace=True,
                 )
                 self.moved_files += 1

@@ -598,7 +598,7 @@ def test_parameter_validation() -> None:
         )
 
     with pytest.raises(
-        ValueError, match='Grouping lines with the same prefix does not support size unit "lines".'
+        ValueError, match=r'Grouping lines with the same prefix does not support size unit "lines".'
     ):
         SplitFilePlugin(
             input_filename="file",
@@ -610,7 +610,7 @@ def test_parameter_validation() -> None:
         )
 
     with pytest.raises(
-        ValueError, match="Grouping lines with the same prefix does not support 'headers'."
+        ValueError, match=r"Grouping lines with the same prefix does not support 'headers'."
     ):
         SplitFilePlugin(
             input_filename="file",
@@ -635,7 +635,8 @@ def test_group_prefix_size_error() -> None:
     )
 
     with pytest.raises(
-        ValueError, match='Group with prefix "<http://example.org/subject1>" exceeds max file size.'
+        ValueError,
+        match=r'Group with prefix "<http://example.org/subject1>" exceeds max file size.',
     ):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 

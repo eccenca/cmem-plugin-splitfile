@@ -1,18 +1,17 @@
 """Plugin tests."""
 
-from contextlib import suppress
 from filecmp import cmp
-from io import BytesIO
 from pathlib import Path
 from shutil import copy, rmtree
 
 import pytest
-from cmem.cmempy.workspace.projects.project import delete_project, make_new_project
-from cmem.cmempy.workspace.projects.resources.resource import create_resource, get_resource
-from requests import HTTPError
+from cmem_client.client import Client
+from cmem_client.exceptions import FilesNotFoundError
+from cmem_client.models.project import Project
+from cmem_client.repositories.protocols.import_item import ImportConflictPolicy
+from cmem_plugin_base.testing import TestExecutionContext
 
 from cmem_plugin_splitfile.plugin_splitfile import SplitFilePlugin
-from tests.utils import TestExecutionContext
 
 from . import __path__
 
@@ -21,36 +20,37 @@ PROJECT_ID = f"project_{UUID4}"
 TEST_FILENAME = f"{UUID4}.nt"
 
 
+def get_client() -> Client:
+    """Get a client for the test project"""
+    return Client.from_context(context=TestExecutionContext(PROJECT_ID))
+
+
+def read_resource(resource_name: str) -> bytes:
+    """Read a project resource of the test project"""
+    return bytes(get_client().files.read(f"{PROJECT_ID}:{resource_name}"))
+
+
 @pytest.fixture
 def setup(request: pytest.FixtureRequest) -> None:
     """Set up Validate test"""
-    with suppress(Exception):
-        delete_project(PROJECT_ID)
-    make_new_project(PROJECT_ID)
+    client = get_client()
+    client.projects.delete_item(PROJECT_ID, skip_if_missing=True)
+    client.projects.create_item(Project(name=PROJECT_ID))
 
-    (Path(__path__[0]) / PROJECT_ID / "resources").mkdir(parents=True, exist_ok=True)
-    copy(
-        Path(__path__[0]) / "test_files" / TEST_FILENAME,
-        Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME,
-    )
-    (Path(__path__[0]) / PROJECT_ID / "resources" / f"empty_{TEST_FILENAME}").open("w").close()
+    resources_path = Path(__path__[0]) / PROJECT_ID / "resources"
+    resources_path.mkdir(parents=True, exist_ok=True)
+    copy(Path(__path__[0]) / "test_files" / TEST_FILENAME, resources_path / TEST_FILENAME)
+    (resources_path / f"empty_{TEST_FILENAME}").open("w").close()
 
-    with (Path(__path__[0]) / PROJECT_ID / "resources" / TEST_FILENAME).open("rb") as f:
-        create_resource(
-            project_name=PROJECT_ID,
-            resource_name=TEST_FILENAME,
-            file_resource=BytesIO(f.read()),
-            replace=True,
+    for resource_name in (TEST_FILENAME, f"empty_{TEST_FILENAME}"):
+        client.files.import_item(
+            path=resources_path / resource_name,
+            key=f"{PROJECT_ID}:{resource_name}",
+            on_conflict=ImportConflictPolicy.REPLACE,
         )
-    create_resource(
-        project_name=PROJECT_ID,
-        resource_name=f"empty_{TEST_FILENAME}",
-        file_resource=BytesIO(b""),
-        replace=True,
-    )
 
     request.addfinalizer(lambda: rmtree(Path(__path__[0]) / PROJECT_ID))
-    request.addfinalizer(lambda: delete_project(PROJECT_ID))  # noqa: PT021
+    request.addfinalizer(lambda: client.projects.delete_item(PROJECT_ID))  # noqa: PT021
 
 
 @pytest.mark.usefixtures("setup")
@@ -107,7 +107,7 @@ def test_api_size() -> None:
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 1}.nt")
+        f = read_resource(f"{UUID4}_00000000{n + 1}.nt")
         assert (
             f
             == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt")
@@ -115,7 +115,7 @@ def test_api_size() -> None:
             .read()
         )
 
-    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+    read_resource(TEST_FILENAME)
 
 
 @pytest.mark.usefixtures("setup")
@@ -152,7 +152,7 @@ def test_api_size_delete() -> None:
     ).execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
 
     for n in range(3):
-        f = get_resource(project_name=PROJECT_ID, resource_name=f"{UUID4}_00000000{n + 1}.nt")
+        f = read_resource(f"{UUID4}_00000000{n + 1}.nt")
         assert (
             f
             == (Path(__path__[0]) / "test_files" / f"{UUID4}_size_00000000{n + 1}.nt")
@@ -160,8 +160,8 @@ def test_api_size_delete() -> None:
             .read()
         )
 
-    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
-        get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+    with pytest.raises(FilesNotFoundError, match=r"not found in project"):
+        read_resource(TEST_FILENAME)
 
 
 @pytest.mark.usefixtures("setup")
@@ -212,7 +212,7 @@ def test_api_empty_file() -> None:
     )
     with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-    get_resource(project_name=PROJECT_ID, resource_name=TEST_FILENAME)
+    read_resource(TEST_FILENAME)
 
 
 @pytest.mark.usefixtures("setup")
@@ -243,8 +243,8 @@ def test_api_empty_file_delete() -> None:
     )
     with pytest.raises(OSError, match=r"Input file is empty."):
         plugin.execute(inputs=[], context=TestExecutionContext(PROJECT_ID))
-    with pytest.raises(HTTPError, match="404 Client Error: Not Found for url:"):
-        get_resource(project_name=PROJECT_ID, resource_name=f"empty_{TEST_FILENAME}")
+    with pytest.raises(FilesNotFoundError, match=r"not found in project"):
+        read_resource(f"empty_{TEST_FILENAME}")
 
 
 @pytest.mark.usefixtures("setup")

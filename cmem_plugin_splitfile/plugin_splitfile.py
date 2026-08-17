@@ -2,18 +2,12 @@
 
 from collections import OrderedDict
 from collections.abc import Sequence
-from io import BytesIO
 from pathlib import Path
 from shutil import move
 from tempfile import TemporaryDirectory
 
-import requests
-from cmem.cmempy.api import config, get_access_token
-from cmem.cmempy.workspace.projects.resources.resource import (
-    create_resource,
-    delete_resource,
-    get_resource_uri,
-)
+from cmem_client.client import Client
+from cmem_client.repositories.protocols.import_item import ImportConflictPolicy
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
@@ -25,7 +19,6 @@ from cmem_plugin_base.dataintegration.types import (
     FloatParameterType,
     StringParameterType,
 )
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from filesplit.split import Split
 from pathvalidate import is_valid_filepath
 
@@ -112,7 +105,7 @@ SIZE_UNIT_PARAMETER_CHOICES = OrderedDict(
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901 PLR0912 PLR0913
+    def __init__(  # noqa: C901 PLR0912 PLR0913 PLR0917
         self,
         input_filename: str,
         chunk_size: float,
@@ -196,29 +189,22 @@ class SplitFilePlugin(WorkflowPlugin):
         self.log.info(f"File {Path(file_path).name} generated ({file_size} bytes)")
         self.split_filenames.append(file_path)
 
+    def file_key(self, resource_name: str) -> str:
+        """Get the files repository key of a project resource"""
+        return f"{self.context.task.project_id()}:{resource_name}"
+
     def get_file(self, file_path: Path) -> None:
         """Stream resource to temp folder"""
-        resource_url = get_resource_uri(
-            project_name=self.context.task.project_id(), resource_name=self.input_filename
-        )
-        setup_cmempy_user_access(self.context.user)
-        headers = {
-            "Authorization": f"Bearer {get_access_token()}",
-            "User-Agent": config.get_cmem_user_agent(),
-        }
-        with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
-            r.raise_for_status()
-            if r.text == "":
-                if self.delete_file:
-                    setup_cmempy_user_access(self.context.user)
-                    delete_resource(self.context.task.project_id(), self.input_filename)
-                raise OSError("Input file is empty.")
-            with file_path.open("wb") as f:
-                for chunk in r.iter_content(chunk_size=10485760):
-                    f.write(chunk)
+        input_file_key = self.file_key(self.input_filename)
+        self.client.files.export_item(key=input_file_key, path=file_path, replace=True)
+        if file_path.stat().st_size == 0:
+            if self.delete_file:
+                self.client.files.delete_item(key=input_file_key)
+            raise OSError("Input file is empty.")
 
     def execute_api(self) -> bool:
         """Execute plugin using the API"""
+        self.client = Client.from_context(context=self.context)
         file_path = Path(self.temp) / Path(self.input_filename).name
         self.get_file(file_path)
         if self.cancel_workflow():
@@ -228,20 +214,16 @@ class SplitFilePlugin(WorkflowPlugin):
         for filename in self.split_filenames:
             if self.cancel_workflow():
                 return False
-            with Path(filename).open("rb") as f:
-                buf = BytesIO(f.read())
-                setup_cmempy_user_access(self.context.user)
-                create_resource(
-                    project_name=self.context.task.project_id(),
-                    resource_name=str(Path(self.input_filename).parent / Path(filename).name),
-                    file_resource=buf,
-                    replace=True,
-                )
-                self.moved_files += 1
+            resource_name = str(Path(self.input_filename).parent / Path(filename).name)
+            self.client.files.import_item(
+                path=Path(filename),
+                key=self.file_key(resource_name),
+                on_conflict=ImportConflictPolicy.REPLACE,
+            )
+            self.moved_files += 1
 
         if self.delete_file:
-            setup_cmempy_user_access(self.context.user)
-            delete_resource(self.context.task.project_id(), self.input_filename)
+            self.client.files.delete_item(key=self.file_key(self.input_filename))
         return True
 
     def execute_filesystem(self) -> bool:

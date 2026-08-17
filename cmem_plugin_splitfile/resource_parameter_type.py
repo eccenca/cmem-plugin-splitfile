@@ -2,10 +2,9 @@
 
 from typing import Any
 
-from cmem.cmempy.workspace.projects.resources import get_resources
+from cmem_client.client import Client
 from cmem_plugin_base.dataintegration.context import PluginContext
 from cmem_plugin_base.dataintegration.types import Autocompletion, StringParameterType
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 
 
 class ResourceParameterType(StringParameterType):
@@ -24,8 +23,8 @@ class ResourceParameterType(StringParameterType):
         context: PluginContext,
     ) -> list[Autocompletion]:
         """Autocomplete"""
-        setup_cmempy_user_access(context.user)
-        resources = [i["fullPath"] for i in get_resources(context.project_id)]
+        client = Client.from_context(context=context)
+        resources = [i.full_path for i in client.files.get_resources(project_id=context.project_id)]
         result = []
         for res in resources:
             str_match = True

@@ -22,11 +22,10 @@ poetry-dynamic-versioning = "^1.10.0"
 python = "^3.13"
 filesplit = "^4.1.0"
 pathvalidate = "^3.3.1"
-cmem-cmempy = "^25.4.0"
-requests = "^2.32.5"
+cmem-client = "^1.0.0"
 
 [tool.poetry.dependencies.cmem-plugin-base]
-version = "^4.16.1"
+version = "^4.19.0"
 allow-prereleases = false
 
 [tool.poetry.group.dev.dependencies.cmem-cmemc]

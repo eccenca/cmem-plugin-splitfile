@@ -16,7 +16,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Changed
 
-- Update template to v8.2.1
+- use `cmem-client` instead of `cmem-cmempy` for all Corporate Memory API access
+- Update template to v8.5.0
 - Do not delete input file on "Input file is empty" if "Delete input file" parameter is set.
 - Better process termination when cancelling workflow
 

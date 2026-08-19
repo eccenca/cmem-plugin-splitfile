@@ -3,19 +3,12 @@
 import re
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
-from io import BytesIO
 from pathlib import Path
 from shutil import move
 from tempfile import TemporaryDirectory
 
-import requests
-from cmem.cmempy.api import config, get_access_token
-from cmem.cmempy.workspace.projects.resources import get_resources
-from cmem.cmempy.workspace.projects.resources.resource import (
-    create_resource,
-    delete_resource,
-    get_resource_uri,
-)
+from cmem_client.client import Client
+from cmem_client.repositories.protocols.import_item import ImportConflictPolicy
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities  # , Entity, EntityPath, EntitySchema
@@ -28,7 +21,6 @@ from cmem_plugin_base.dataintegration.types import (
     FloatParameterType,
     StringParameterType,
 )
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 from filesplit.split import Split
 from pathvalidate import is_valid_filepath
 
@@ -138,7 +130,7 @@ TYPE_URI = "urn:x-eccenca:splifile"
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901, PLR0912, PLR0913
+    def __init__(  # noqa: C901, PLR0912, PLR0913, PLR0915
         self,
         input_filename: str,
         chunk_size: float,
@@ -206,9 +198,21 @@ class SplitFilePlugin(WorkflowPlugin):
         self.moved_files = 0
         self.split_filenames: list[str] = []
         self.last_file = 0
+        self._client: Client | None = None
 
         self.input_ports = FixedNumberOfInputs([])
         self.output_port = None
+
+    @property
+    def client(self) -> Client:
+        """Get the Corporate Memory client, created lazily on first access"""
+        if self._client is None:
+            self._client = Client.from_context(context=self.context)
+        return self._client
+
+    def file_key(self, resource_name: str) -> str:
+        """Get the files repository key of a project resource"""
+        return f"{self.context.task.project_id()}:{resource_name}"
 
     def cancel_workflow(self) -> bool:
         """Cancel workflow"""
@@ -323,13 +327,17 @@ class SplitFilePlugin(WorkflowPlugin):
                     handle_match(f.name, delete_fn=lambda f=f: f.unlink(missing_ok=True))  # type: ignore[misc]
 
         else:
-            setup_cmempy_user_access(self.context.user)
             project_id = self.context.task.project_id()
 
-            for r in get_resources(project_id):
+            for r in self.client.files.get_resources(project_id=project_id):
+                # Only consider results in the directory the output files are written to
+                if Path(r.full_path).parent != input_path.parent:
+                    continue
                 handle_match(
-                    r["name"],
-                    delete_fn=lambda r=r: delete_resource(project_id, r["name"]),  # type: ignore[misc]
+                    r.name,
+                    delete_fn=lambda r=r: self.client.files.delete_item(  # type: ignore[misc]
+                        key=self.file_key(r.full_path)
+                    ),
                 )
 
         self.last_file = max(numbers) if numbers else 0
@@ -349,40 +357,26 @@ class SplitFilePlugin(WorkflowPlugin):
                 target_path.mkdir(exist_ok=True)
             move(Path(filename), target_path / target)
         else:
-            with Path(filename).open("rb") as f:
-                buf = BytesIO(f.read())
-                setup_cmempy_user_access(self.context.user)
-                create_resource(
-                    project_name=self.context.task.project_id(),
-                    resource_name=str(Path(self.input_filename).parent / target),
-                    file_resource=buf,
-                    replace=True,
-                )
+            resource_name = str(Path(self.input_filename).parent / target)
+            self.client.files.import_item(
+                path=Path(filename),
+                key=self.file_key(resource_name),
+                on_conflict=ImportConflictPolicy.REPLACE,
+            )
 
     def delete_file(self, input_file_path: Path) -> None:
         """Delete input file"""
         if self.use_directory:
             input_file_path.unlink()
         else:
-            setup_cmempy_user_access(self.context.user)
-            delete_resource(self.context.task.project_id(), self.input_filename)
+            self.client.files.delete_item(key=self.file_key(self.input_filename))
 
     def get_file_api(self) -> None:
         """Stream resource to temp folder using the API"""
         file_path = Path(self.temp) / Path(self.input_filename).name
-        resource_url = get_resource_uri(
-            project_name=self.context.task.project_id(), resource_name=self.input_filename
+        self.client.files.export_item(
+            key=self.file_key(self.input_filename), path=file_path, replace=True
         )
-        setup_cmempy_user_access(self.context.user)
-        headers = {
-            "Authorization": f"Bearer {get_access_token()}",
-            "User-Agent": config.get_cmem_user_agent(),
-        }
-        with requests.get(resource_url, headers=headers, stream=True) as r:  # noqa: S113
-            r.raise_for_status()
-            with file_path.open("wb") as f:
-                for chunk in r.iter_content(chunk_size=10485760):
-                    f.write(chunk)
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> None:  # noqa: ARG002
         """Execute plugin with temporary directory"""

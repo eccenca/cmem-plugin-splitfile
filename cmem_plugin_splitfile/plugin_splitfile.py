@@ -8,7 +8,7 @@ from shutil import move
 from tempfile import TemporaryDirectory
 
 from cmem_client.client import Client
-from cmem_client.repositories.protocols.import_item import ImportConflictPolicy
+from cmem_client.exceptions import FilesImportError
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities  # , Entity, EntityPath, EntitySchema
@@ -357,11 +357,25 @@ class SplitFilePlugin(WorkflowPlugin):
                 target_path.mkdir(exist_ok=True)
             move(Path(filename), target_path / target)
         else:
-            resource_name = str(Path(self.input_filename).parent / target)
-            self.client.files.import_item(
-                path=Path(filename),
-                key=self.file_key(resource_name),
-                on_conflict=ImportConflictPolicy.REPLACE,
+            self.upload_output_file(Path(filename), str(Path(self.input_filename).parent / target))
+
+    def upload_output_file(self, file_path: Path, resource_name: str) -> None:
+        """Upload an output file to the project resources.
+
+        This streams the file straight to the files endpoint instead of going through
+        ``client.files.import_item()``. The files repository is a cache over *all* file
+        resources of *all* projects on the instance, and ``import_item()`` refreshes that
+        cache after every upload -- which costs one request per project per uploaded file.
+        Splitting into many chunks is exactly the case where that gets expensive.
+        """
+        project_id = self.context.task.project_id()
+        url = self.client.config.url_build_api / "workspace/projects" / project_id / "files"
+        with file_path.open("rb") as file:
+            response = self.client.http.put(url, params={"path": resource_name}, content=file)
+        if response.is_error:
+            raise FilesImportError(
+                f"Could not upload file '{resource_name}' to project '{project_id}' "
+                f"({response.status_code})."
             )
 
     def delete_file(self, input_file_path: Path) -> None:

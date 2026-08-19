@@ -1,6 +1,6 @@
 # cmem-plugin-splitfile
 
-Split a text file into parts with a specified size.
+Split a file into parts with a specified size
 
 [![eccenca Corporate Memory][cmem-shield]][cmem-link]
 
@@ -9,7 +9,7 @@ This is a plugin for [eccenca](https://eccenca.com) [Corporate Memory](https://d
 ```
 cmemc admin workspace python install cmem-plugin-splitfile
 ```
-
+[![workflow](https://github.com/eccenca/cmem-plugin-splitfile/actions/workflows/check.yml/badge.svg)](https://github.com/eccenca/cmem-plugin-splitfile/actions) [![pypi version](https://img.shields.io/pypi/v/cmem-plugin-splitfile)](https://pypi.org/project/cmem-plugin-splitfile) [![license](https://img.shields.io/pypi/l/cmem-plugin-splitfile)](https://pypi.org/project/cmem-plugin-splitfile)
 [![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
 
 [cmem-link]: https://documentation.eccenca.com

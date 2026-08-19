@@ -26,7 +26,7 @@ CUSTOM_DIR = Path(__path__[0]) / PROJECT_ID / "custom"
 
 
 @pytest.fixture
-def setup_filesystem() -> Generator[None, Any, None]:
+def setup_filesystem() -> Generator[None, Any]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
@@ -55,7 +55,7 @@ def setup_filesystem() -> Generator[None, Any, None]:
 
 
 @pytest.fixture
-def setup_api() -> Generator[None, Any, None]:
+def setup_api() -> Generator[None, Any]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)
@@ -96,7 +96,7 @@ def setup_api() -> Generator[None, Any, None]:
 
 
 @pytest.fixture
-def setup_no_file() -> Generator[None, Any, None]:
+def setup_no_file() -> Generator[None, Any]:
     """Set up Validate test"""
     with suppress(Exception):
         delete_project(PROJECT_ID)

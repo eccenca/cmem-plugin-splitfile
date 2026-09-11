@@ -17,7 +17,6 @@ default:
 stages:
   - test
   - build
-  - publish
 
 ruff:
   stage: test
@@ -86,16 +85,4 @@ build:
     paths:
       - dist/*.tar.gz
       - dist/*.whl
-
-pypi:
-  # publishing only available on a tag
-  stage: publish
-  needs:
-    - ruff
-    - build
-  allow_failure: true
-  when: manual
-  script:
-    - poetry config pypi-token.pypi $PYPI_TOKEN
-    - poetry publish
 

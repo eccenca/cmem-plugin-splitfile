@@ -130,7 +130,7 @@ TYPE_URI = "urn:x-eccenca:splifile"
 class SplitFilePlugin(WorkflowPlugin):
     """Split File Workflow Plugin"""
 
-    def __init__(  # noqa: C901, PLR0912, PLR0913, PLR0915
+    def __init__(  # noqa: C901, PLR0912, PLR0913, PLR0915, PLR0917
         self,
         input_filename: str,
         chunk_size: float,

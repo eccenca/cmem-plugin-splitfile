@@ -1,9 +1,9 @@
-# Changes here will be overwritten by Copier
-_commit: v8.5.0
+7.07.# Changes here will be overwritten by Copier
+_commit: v9.7.0
 _src_path: gh:eccenca/cmem-plugin-template
 author_mail: cmempy-developer@eccenca.com
 author_name: eccenca GmbH
-github_page: https://github.com/eccenca/cmem-plugin-splitfile
+github_page: ''
 project_description: Split a file into parts with a specified size
 project_slug: splitfile
 project_type: plugin
